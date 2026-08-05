@@ -1,0 +1,78 @@
+services:
+  gateway:
+    # Пин по digest, а не по тегу: latest ломает детерминизм GitOps.
+    # Обновление приходит PR-ом от Renovate.
+    image: ${OPENCLAW_IMAGE}
+    container_name: openclaw-gateway
+
+    # ТОЛЬКО loopback. Docker пишет правила в iptables в обход UFW,
+    # поэтому 0.0.0.0 здесь означает "открыто в интернет".
+    ports:
+      - "127.0.0.1:18789:18789"
+
+    environment:
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_GATEWAY_BIND: lan
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      NODE_ENV: production
+      TZ: Europe/Moscow
+
+    volumes:
+      - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
+      - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace
+      - ${OPENCLAW_STATE_DIR}/secrets:/home/node/.config/openclaw
+
+    # Образ работает под uid 1000 (node). Бинд-маунты должны
+    # принадлежать 1000:1000, иначе EACCES при старте.
+    user: "1000:1000"
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+
+    healthcheck:
+      test: [ "CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    deploy:
+      resources:
+        limits:
+          memory: 2500m
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    restart: unless-stopped
+
+  # Сайдкар для CLI-команд. Делит сетевой namespace с гейтвеем,
+  # чтобы достучаться до него по 127.0.0.1.
+  # Профиль cli => не поднимается при обычном up.
+  cli:
+    image: ${OPENCLAW_IMAGE}
+    profiles: [ "cli" ]
+    network_mode: "service:gateway"
+    depends_on:
+      - gateway
+    environment:
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+    volumes:
+      - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
+      - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace
+      - ${OPENCLAW_STATE_DIR}/secrets:/home/node/.config/openclaw
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
+      - NET_ADMIN
+    entrypoint: [ "node", "dist/index.js" ]

@@ -4,7 +4,7 @@
 # Дальше всё делает реконсиль-таймер, руками на сервер лазить не нужно.
 set -euo pipefail
 
-REPO_DIR=/opt/openclaw-dvb
+REPO_DIR=/opt/openclaw-glossary
 STATE_DIR=/opt/openclaw-state
 
 log() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }

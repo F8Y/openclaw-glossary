@@ -1,0 +1,22 @@
+# Секреты в открытом виде — никогда
+.env
+.env.*
+!.env.example
+*.dec.yaml
+secrets/*.yaml
+!secrets/*.enc.yaml
+!secrets/*.example
+age-key.txt
+*.agekey
+
+# Состояние рантайма (живёт в /opt/openclaw-state, не в git)
+state/
+workspace/
+
+# Мусор
+*.log
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc

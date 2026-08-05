@@ -1,0 +1,69 @@
+name: Promote to deploy
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'SHA из main (пусто = текущий HEAD main)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: main -> deploy
+    runs-on: ubuntu-latest
+    environment: production   # можно повесить required reviewers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Определить целевой коммит
+        id: target
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.sha }}" ]]; then
+            TARGET="${{ inputs.sha }}"
+            git merge-base --is-ancestor "$TARGET" origin/main \
+              || { echo "::error::$TARGET не входит в main"; exit 1; }
+          else
+            TARGET="$(git rev-parse origin/main)"
+          fi
+          echo "sha=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Выкатываем: $TARGET"
+
+      - name: Проверить, что CI на этом коммите зелёный
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          STATE="$(gh api "repos/${{ github.repository }}/commits/${{ steps.target.outputs.sha }}/check-runs" \
+            --jq '[.check_runs[] | select(.name != "promote") | .conclusion] | unique | join(",")')"
+          echo "Статусы проверок: ${STATE:-нет}"
+          case "$STATE" in
+            *failure*|*cancelled*|*timed_out*)
+              echo "::error::CI не зелёный на целевом коммите"; exit 1 ;;
+          esac
+
+      - name: Fast-forward deploy
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git fetch origin deploy:deploy 2>/dev/null || git branch deploy origin/main
+
+          # Только fast-forward. Если deploy ушёл вперёд — это аномалия,
+          # разбираться надо руками, а не форсить push.
+          git checkout deploy
+          git merge --ff-only "${{ steps.target.outputs.sha }}"
+          git push origin deploy
+
+          echo "### Выкачено: \`${{ steps.target.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "VM подхватит в течение 5 минут." >> "$GITHUB_STEP_SUMMARY"

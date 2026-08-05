@@ -1,0 +1,36 @@
+[
+    {
+        "path": "agents.defaults.memorySearch.enabled",
+        "value": true
+    },
+    {
+        "path": "agents.defaults.memorySearch.mode",
+        "value": "keyword"
+    },
+    {
+        "path": "agents.defaults.memorySearch.paths",
+        "value": [
+            "/home/node/.openclaw/workspace/knowledge"
+        ]
+    },
+    {
+        "path": "agents.defaults.memorySearch.store.path",
+        "value": "/home/node/.openclaw/memory/{agentId}.sqlite"
+    },
+    {
+        "path": "agents.list.glossary.model",
+        "value": "deepseek/deepseek-v4-flash"
+    },
+    {
+        "path": "agents.list.glossary.memorySearch.enabled",
+        "value": true
+    },
+    {
+        "path": "agents.list.news.memorySearch.enabled",
+        "value": false
+    },
+    {
+        "path": "agents.defaults.sandbox.mode",
+        "value": "off"
+    }
+]

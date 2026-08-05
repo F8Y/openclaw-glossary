@@ -1,0 +1,24 @@
+[Unit]
+Description=Периодическая реконсиляция OpenClaw из git
+Requires=openclaw-reconcile.service
+
+[Timer]
+# Через минуту после загрузки — состояние применяется и после ребута,
+# не дожидаясь очередного цикла.
+OnBootSec=1min
+
+# Каждые 5 минут. Задержка выкатки до 5 минут на двоих пользователей
+# несущественна, а нагрузка околонулевая: если ничего не изменилось,
+# прогон стоит один git fetch и идемпотентный compose up.
+OnUnitActiveSec=5min
+
+# Разброс, чтобы прогоны не липли к ровным минутам.
+RandomizedDelaySec=30s
+
+# Догнать пропущенный запуск, если VM была выключена.
+Persistent=true
+
+Unit=openclaw-reconcile.service
+
+[Install]
+WantedBy=timers.target

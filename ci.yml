@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Секреты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks нужна вся история
+
+      # Самая ценная проверка. Ключ BotHub, утёкший в историю,
+      # обходится дороже всего остального CI вместе взятого.
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: SOPS-файлы действительно зашифрованы
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          fail=0
+          for f in secrets/*.enc.yaml; do
+            if ! grep -q 'ENC\[AES256_GCM' "$f"; then
+              echo "::error file=$f::файл не зашифрован — запусти sops --encrypt --in-place $f"
+              fail=1
+            fi
+            if ! grep -q '^sops:' "$f"; then
+              echo "::error file=$f::нет метаданных sops"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: .env не в индексе
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env закоммичен — убери из индекса и ротируй ключи"
+            exit 1
+          fi
+          echo "OK"
+
+  lint:
+    name: Линтеры
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning deploy/*.sh bootstrap.sh
+
+      - name: bash -n
+        run: for f in deploy/*.sh bootstrap.sh; do bash -n "$f"; done
+
+      - name: yamllint
+        run: |
+          pipx install yamllint
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 120}}}' \
+            docker-compose.yml .sops.yaml .github/workflows/
+
+      - name: JSON-конфиги валидны
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in config/*.json; do
+            jq empty "$f" && echo "OK: $f"
+          done
+
+      - name: systemd-юниты валидны
+        run: |
+          sudo apt-get install -y -qq systemd
+          for f in deploy/*.service deploy/*.timer; do
+            systemd-analyze verify "$f" 2>&1 | tee /tmp/verify.log
+            # verify ругается на отсутствующие на раннере зависимости —
+            # это ожидаемо, ловим только синтаксические ошибки
+            if grep -qi 'invalid\|failed to parse\|bad ' /tmp/verify.log; then
+              echo "::error file=$f::синтаксическая ошибка в юните"; exit 1
+            fi
+          done
+
+  compose:
+    name: Валидация compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Настоящие секреты в CI не нужны: подставляем заглушки,
+      # чтобы интерполяция прошла и структура проверилась.
+      - name: docker compose config
+        run: |
+          set -euo pipefail
+          cat > /tmp/ci.env <<'EOF'
+          OPENCLAW_IMAGE=ghcr.io/openclaw/openclaw@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          OPENCLAW_STATE_DIR=/tmp/state
+          OPENCLAW_GATEWAY_TOKEN=ci
+          OPENAI_API_KEY=ci
+          OPENAI_BASE_URL=https://example.invalid/v1
+          TELEGRAM_BOT_TOKEN=ci
+          EOF
+          docker compose --env-file /tmp/ci.env -f docker-compose.yml config -q
+          echo "compose OK"
+
+      - name: порт не опубликован наружу
+        run: |
+          set -euo pipefail
+          # Docker обходит UFW, поэтому 0.0.0.0 здесь = открыто в интернет.
+          # Проверка стоит того, чтобы падать в CI.
+          if grep -E '^\s*-\s*"?(0\.0\.0\.0:)?[0-9]+:[0-9]+' docker-compose.yml \
+             | grep -v '127\.0\.0\.1'; then
+            echo "::error::найден проброс порта не на loopback"
+            exit 1
+          fi
+          echo "OK: все порты на 127.0.0.1"

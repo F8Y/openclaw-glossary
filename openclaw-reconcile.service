@@ -1,0 +1,38 @@
+[Unit]
+Description=OpenClaw GitOps reconcile
+Documentation=https://github.com/OWNER/openclaw-dvb
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+# Молчаливый таймер — худший вид автоматизации.
+OnFailure=openclaw-reconcile-failure.service
+
+[Service]
+Type=oneshot
+User=root
+
+# Создаёт /run/openclaw с нужными правами. /run — tmpfs, поэтому
+# расшифрованные секреты не попадают на диск и не переживают ребут.
+RuntimeDirectory=openclaw
+RuntimeDirectoryMode=0700
+
+StateDirectory=openclaw-deploy
+StateDirectoryMode=0750
+
+Environment=REPO_DIR=/opt/openclaw-dvb
+Environment=BRANCH=deploy
+Environment=RUN_DIR=/run/openclaw
+Environment=STATE_DIR=/var/lib/openclaw-deploy
+
+ExecStart=/opt/openclaw-dvb/deploy/reconcile.sh
+
+# Больше цикла таймера: если прогон завис, лучше убить его,
+# чем копить параллельные попытки.
+TimeoutStartSec=600
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
