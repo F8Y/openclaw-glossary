@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: 'SHA из main (пусто = текущий HEAD main)'
+        description: 'SHA из master (пусто = текущий HEAD master)'
         required: false
         type: string
 
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   promote:
-    name: main -> deploy
+    name: master -> deploy
     runs-on: ubuntu-latest
     environment: production   # можно повесить required reviewers
     steps:
@@ -30,10 +30,10 @@ jobs:
           set -euo pipefail
           if [[ -n "${{ inputs.sha }}" ]]; then
             TARGET="${{ inputs.sha }}"
-            git merge-base --is-ancestor "$TARGET" origin/main \
-              || { echo "::error::$TARGET не входит в main"; exit 1; }
+            git merge-base --is-ancestor "$TARGET" origin/master \
+              || { echo "::error::$TARGET не входит в master"; exit 1; }
           else
-            TARGET="$(git rev-parse origin/main)"
+            TARGET="$(git rev-parse origin/master)"
           fi
           echo "sha=$TARGET" >> "$GITHUB_OUTPUT"
           echo "Выкатываем: $TARGET"
@@ -57,7 +57,7 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-          git fetch origin deploy:deploy 2>/dev/null || git branch deploy origin/main
+          git fetch origin deploy:deploy 2>/dev/null || git branch deploy origin/master
 
           # Только fast-forward. Если deploy ушёл вперёд — это аномалия,
           # разбираться надо руками, а не форсить push.
