@@ -1,5 +1,20 @@
 [
     {
+        "path": "gateway.mode",
+        "value": "local"
+    },
+    {
+        "path": "gateway.bind",
+        "value": "lan"
+    },
+    {
+        "path": "gateway.controlUi.allowedOrigins",
+        "value": [
+            "http://localhost:18789",
+            "http://127.0.0.1:18789"
+        ]
+    },
+    {
         "path": "agents.defaults.memorySearch.enabled",
         "value": true
     },
@@ -14,12 +29,8 @@
         ]
     },
     {
-        "path": "agents.defaults.memorySearch.store.path",
-        "value": "/home/node/.openclaw/memory/{agentId}.sqlite"
-    },
-    {
         "path": "agents.list.glossary.model",
-        "value": "deepseek/deepseek-v4-flash"
+        "value": "custom-bothub-chat/deepseek-v4-flash"
     },
     {
         "path": "agents.list.glossary.memorySearch.enabled",

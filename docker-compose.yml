@@ -1,3 +1,9 @@
+# Самодостаточный compose. Клон upstream-репозитория OpenClaw не нужен:
+# образ берём готовый из GHCR, скрипты оттуда не используем.
+#
+# Запуск только через deploy/reconcile.sh — он подставляет --env-file
+# из tmpfs. Руками: docker compose --env-file /run/openclaw/env up -d
+
 services:
   gateway:
     # Пин по digest, а не по тегу: latest ломает детерминизм GitOps.
@@ -9,6 +15,18 @@ services:
     # поэтому 0.0.0.0 здесь означает "открыто в интернет".
     ports:
       - "127.0.0.1:18789:18789"
+
+    # КОСТЫЛЬ, но вынужденный. С Cloud.ru часть IP из пула
+    # api.telegram.org недоступна: 149.154.166.110 таймаутится,
+    # 149.154.167.220 отвечает. DNS отдаёт первый, бот молчит.
+    #
+    # Хрупкость осознанная: если Telegram сменит адреса, канал
+    # отвалится молча. Проверять командой с хоста:
+    #   curl -4 -sS -m 10 -o /dev/null -w '%{http_code}\n' \
+    #        --resolve api.telegram.org:443:149.154.167.220 \
+    #        https://api.telegram.org
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
 
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
