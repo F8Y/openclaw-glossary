@@ -10,7 +10,7 @@
 # Запускается из openclaw-reconcile.service, не вручную.
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/opt/openclaw-glossary}"
+REPO_DIR="${REPO_DIR:-/opt/openclaw-dvb}"
 BRANCH="${BRANCH:-deploy}"
 RUN_DIR="${RUN_DIR:-/run/openclaw}"
 ENV_FILE="${RUN_DIR}/env"
@@ -62,8 +62,12 @@ SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt \
     || die "sops не смог расшифровать secrets/openclaw.enc.yaml"
 chmod 600 "$ENV_FILE"
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+# Директива должна стоять непосредственно над `source`: в составной
+# строке `set -a; source ...; set +a` она привязалась бы к `set -a`.
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
 
 [[ -n "${OPENCLAW_IMAGE:-}" ]] || die "OPENCLAW_IMAGE не задан"
 [[ "$OPENCLAW_IMAGE" == *"@sha256:"* ]] \

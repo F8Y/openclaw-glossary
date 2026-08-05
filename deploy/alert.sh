@@ -19,14 +19,16 @@ if [[ ! -r "$ENV_FILE" ]]; then
     umask 077
     SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt \
         sops --decrypt --output-type dotenv \
-        /opt/openclaw-glossary/secrets/openclaw.enc.yaml > "$ENV_FILE" 2>/dev/null || {
+        /opt/openclaw-dvb/secrets/openclaw.enc.yaml > "$ENV_FILE" 2>/dev/null || {
             logger -t openclaw-alert "не удалось расшифровать секреты, алерт не отправлен"
             exit 1
         }
 fi
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
 
 : "${ALERT_BOT_TOKEN:?ALERT_BOT_TOKEN не задан}"
 : "${ALERT_CHAT_ID:?ALERT_CHAT_ID не задан}"
