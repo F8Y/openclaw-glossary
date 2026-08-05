@@ -76,13 +76,17 @@ ufw default allow outgoing > /dev/null
 ufw allow 22/tcp comment ssh > /dev/null
 ufw --force enable > /dev/null
 
-log "systemd-юниты"
+log "systemd-юниты (устанавливаем, но НЕ включаем)"
+# Таймер намеренно не запускается здесь. На этом шаге ещё нет
+# ни зашифрованных секретов, ни ветки deploy, ни GATEWAY_TOKEN —
+# включённый таймер начал бы падать каждые 5 минут и дёргать
+# алертер, который тоже не настроен. Включается вручную последним
+# шагом, когда всё остальное готово (см. README).
 if [[ -d "${REPO_DIR}/deploy" ]]; then
     install -m 644 "${REPO_DIR}"/deploy/*.service "${REPO_DIR}"/deploy/*.timer /etc/systemd/system/
     chmod +x "${REPO_DIR}"/deploy/*.sh
     systemctl daemon-reload
-    systemctl enable -q --now openclaw-reconcile.timer
-    echo "Таймер включён."
+    echo "Юниты установлены. Таймер выключен — это ожидаемо."
 else
     echo "ВНИМАНИЕ: ${REPO_DIR}/deploy не найден — склонируй репозиторий и перезапусти."
 fi
@@ -100,14 +104,17 @@ cat <<EOF
 не выносится. Потеряешь — секреты не расшифровать, придётся
 перевыпускать все токены.
 
-Дальше:
-  1. Впиши ключ в .sops.yaml, зашифруй secrets/openclaw.enc.yaml
-  2. Разовый онбординг OpenClaw (см. README, «Первый запуск»)
-  3. Забери сгенерированный GATEWAY_TOKEN в SOPS
-  4. Промоуть main -> deploy через GitHub Actions
+ТАЙМЕР ВЫКЛЮЧЕН. Это правильно: включать его до того, как готовы
+секреты и ветка deploy, значит получить падение каждые 5 минут.
 
-Диагностика:
-  systemctl status openclaw-reconcile.timer
-  journalctl -u openclaw-reconcile -f
+Дальше строго по порядку (README, «Первый запуск», шаги 3-7):
+  3. Впиши ключ выше в .sops.yaml, зашифруй secrets/openclaw.enc.yaml
+  4. Разовый онбординг, забери GATEWAY_TOKEN в SOPS
+  5. Проверь реконсиль вручную:
+       systemctl start openclaw-reconcile.service
+       journalctl -u openclaw-reconcile -n 50
+  6. Создай ветку deploy через Actions -> Promote
+  7. Только теперь:
+       systemctl enable --now openclaw-reconcile.timer
 ────────────────────────────────────────────────────────────
 EOF
