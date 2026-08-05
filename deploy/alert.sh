@@ -19,7 +19,7 @@ if [[ ! -r "$ENV_FILE" ]]; then
     umask 077
     SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt \
         sops --decrypt --output-type dotenv \
-        /opt/openclaw-dvb/secrets/openclaw.enc.yaml > "$ENV_FILE" 2>/dev/null || {
+        /opt/openclaw-glossary/secrets/openclaw.enc.yaml > "$ENV_FILE" 2>/dev/null || {
             logger -t openclaw-alert "не удалось расшифровать секреты, алерт не отправлен"
             exit 1
         }
@@ -51,7 +51,7 @@ $(printf '%s' "$JOURNAL" | tail -n 15)
 
 Диагностика:
   journalctl -u openclaw-reconcile -n 100
-  docker compose --env-file /run/openclaw/env -f /opt/openclaw-dvb/docker-compose.yml logs --tail 100
+  docker compose --env-file /run/openclaw/env -f /opt/openclaw-glossary/docker-compose.yml logs --tail 100
 EOF
 )"
 

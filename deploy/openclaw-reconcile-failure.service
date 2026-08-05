@@ -6,7 +6,7 @@ Type=oneshot
 User=root
 Environment=STATE_DIR=/var/lib/openclaw-deploy
 Environment=ENV_FILE=/run/openclaw/env
-ExecStart=/opt/openclaw-dvb/deploy/alert.sh
+ExecStart=/opt/openclaw-glossary/deploy/alert.sh
 TimeoutStartSec=60
 StandardOutput=journal
 StandardError=journal
