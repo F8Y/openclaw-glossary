@@ -107,16 +107,29 @@
         "value": "off"
     },
     {
+        "path": "models.providers.custom-bothub-chat.models[0].compat.supportsTools",
+        "value": true
+    },
+    {
+        "path": "plugins.entries.duckduckgo.enabled",
+        "value": true
+    },
+    {
         "path": "tools.profile",
         "value": "minimal"
+    },
+    {
+        "path": "tools.codeMode",
+        "value": false
     },
     {
         "path": "tools.alsoAllow",
         "value": [
             "memory_search",
             "memory_get",
-            "group:web",
-            "group:messaging",
+            "web_search",
+            "web_fetch",
+            "message",
             "cron",
             "session_status"
         ]
@@ -137,6 +150,10 @@
         "value": true
     },
     {
+        "path": "tools.web.search.provider",
+        "value": "duckduckgo"
+    },
+    {
         "path": "tools.web.search.maxResults",
         "value": 8
     },
@@ -151,9 +168,5 @@
     {
         "path": "tools.web.fetch.timeoutSeconds",
         "value": 30
-    },
-    {
-        "path": "plugins.entries.duckduckgo.enabled",
-        "value": true
     }
 ]
