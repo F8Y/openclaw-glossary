@@ -128,9 +128,23 @@ log "docker compose up -d"
 # целиком не перезаписываем — применяем только свои ключи батчем.
 if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
     log "применяем конфиг агентов"
-    "${COMPOSE[@]}" run --rm -T cli config set \
-        --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" \
-        || log "ВНИМАНИЕ: не удалось применить конфиг агентов"
+    if CONFIG_OUTPUT="$(
+        "${COMPOSE[@]}" run --rm -T cli config set \
+            --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" 2>&1
+    )"; then
+        printf '%s\n' "$CONFIG_OUTPUT"
+    else
+        printf '%s\n' "$CONFIG_OUTPUT" >&2
+        die "не удалось применить декларативный конфиг OpenClaw"
+    fi
+
+    # Некоторые пути применяются hot-reload'ом, но изменения plugin
+    # registry требуют полного restart. CLI сам печатает точный hint;
+    # рестартуем только когда он действительно нужен, а не каждые 5 минут.
+    if grep -Fq "Restart the gateway to apply." <<< "$CONFIG_OUTPUT"; then
+        log "конфиг требует перезапуска gateway"
+        "${COMPOSE[@]}" restart gateway
+    fi
 fi
 
 # --- Health gate -------------------------------------------------------
