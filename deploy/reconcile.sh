@@ -102,6 +102,22 @@ if [[ -d "${REPO_DIR}/config/knowledge" ]]; then
     chown -R 1000:1000 "${OPENCLAW_STATE_DIR}/workspace/memory"
 fi
 
+# --- Файлы личности ---------------------------------------------------
+# SOUL.md, IDENTITY.md, AGENTS.md кладутся в КОРЕНЬ workspace — там их
+# ищет агент при старте сессии. Благодаря им бот одинаков для всех
+# собеседников, хотя сессии у каждого свои.
+#
+# БЕЗ --delete, в отличие от базы знаний: рядом лежат MEMORY.md, USER.md,
+# memory/ и agents/, которые пишет сам агент. Удаление снесло бы всё
+# накопленное состояние.
+if [[ -d "${REPO_DIR}/config/workspace" ]]; then
+    log "синхронизируем файлы личности"
+    rsync -a \
+        "${REPO_DIR}/config/workspace/" \
+        "${OPENCLAW_STATE_DIR}/workspace/"
+    chown -R 1000:1000 "${OPENCLAW_STATE_DIR}/workspace"
+fi
+
 # --- Применение стека -------------------------------------------------
 log "docker compose up -d"
 "${COMPOSE[@]}" pull --quiet gateway || log "pull не удался, работаем на локальном образе"

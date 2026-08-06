@@ -11,7 +11,7 @@ age-key.txt
 
 # Состояние рантайма (живёт в /opt/openclaw-state, не в git)
 state/
-workspace/
+/workspace/
 
 # Мусор
 *.log
