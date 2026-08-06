@@ -19,6 +19,18 @@
         "value": false
     },
     {
+        "path": "gateway.auth.mode",
+        "value": "token"
+    },
+    {
+        "path": "gateway.auth.token",
+        "value": {
+            "source": "env",
+            "provider": "default",
+            "id": "OPENCLAW_GATEWAY_TOKEN"
+        }
+    },
+    {
         "path": "agents.defaults.memorySearch.enabled",
         "value": true
     },
@@ -122,6 +134,10 @@
     },
     {
         "path": "tools.web.search.enabled",
+        "value": true
+    },
+    {
+        "path": "plugins.entries.duckduckgo.enabled",
         "value": true
     }
 ]
