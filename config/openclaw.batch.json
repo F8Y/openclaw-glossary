@@ -93,5 +93,35 @@
     {
         "path": "agents.defaults.sandbox.mode",
         "value": "off"
+    },
+    {
+        "path": "tools.profile",
+        "value": "minimal"
+    },
+    {
+        "path": "tools.alsoAllow",
+        "value": [
+            "group:memory",
+            "group:web",
+            "group:messaging",
+            "ask_user",
+            "cron",
+            "session_status"
+        ]
+    },
+    {
+        "path": "tools.deny",
+        "value": [
+            "exec",
+            "process",
+            "write",
+            "edit",
+            "apply_patch",
+            "browser"
+        ]
+    },
+    {
+        "path": "tools.web.search.enabled",
+        "value": true
     }
 ]
