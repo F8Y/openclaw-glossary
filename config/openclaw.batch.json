@@ -160,7 +160,7 @@
     },
     {
         "path": "tools.web.search.maxResults",
-        "value": 8
+        "value": 5
     },
     {
         "path": "tools.web.fetch.enabled",
@@ -168,10 +168,10 @@
     },
     {
         "path": "tools.web.fetch.maxRedirects",
-        "value": 10
+        "value": 3
     },
     {
         "path": "tools.web.fetch.timeoutSeconds",
-        "value": 30
+        "value": 15
     }
 ]
