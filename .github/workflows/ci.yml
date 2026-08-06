@@ -97,8 +97,13 @@ jobs:
             )
             and any(.[];
               .path == "tools.alsoAllow"
+              and (.value | index("read") != null)
               and (.value | index("web_search") != null)
               and (.value | index("web_fetch") != null)
+            )
+            and any(.[];
+              .path == "tools.fs.workspaceOnly"
+              and .value == true
             )
             and any(.[];
               .path == "models.providers.custom-bothub-chat.models[0].compat.supportsTools"
@@ -109,6 +114,16 @@ jobs:
               and .value == false
             )
           ' config/openclaw.batch.json
+
+      - name: Реестр внешних источников подключён
+        run: |
+          set -euo pipefail
+          test -s config/workspace/SOURCES.md
+          grep -Fq 'SOURCES.md' config/workspace/AGENTS.md
+          grep -Fq 'developers.google.com/machine-learning/glossary' \
+            config/workspace/SOURCES.md
+          grep -Fq 'www.cbr.ru/dkp/voc/' config/workspace/SOURCES.md
+          echo "source policy OK"
 
       - name: systemd-юниты валидны
         run: |

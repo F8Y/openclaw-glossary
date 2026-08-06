@@ -127,12 +127,17 @@
         "value": [
             "memory_search",
             "memory_get",
+            "read",
             "web_search",
             "web_fetch",
             "message",
             "cron",
             "session_status"
         ]
+    },
+    {
+        "path": "tools.fs.workspaceOnly",
+        "value": true
     },
     {
         "path": "tools.deny",
