@@ -10,7 +10,7 @@
 # Запускается из openclaw-reconcile.service, не вручную.
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/opt/openclaw-dvb}"
+REPO_DIR="${REPO_DIR:-/opt/openclaw-glossary}"
 BRANCH="${BRANCH:-deploy}"
 RUN_DIR="${RUN_DIR:-/run/openclaw}"
 ENV_FILE="${RUN_DIR}/env"

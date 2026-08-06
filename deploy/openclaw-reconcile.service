@@ -1,6 +1,6 @@
 [Unit]
 Description=OpenClaw GitOps reconcile
-Documentation=https://github.com/OWNER/openclaw-dvb
+Documentation=https://github.com/F8Y/openclaw-glossary
 After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -26,12 +26,12 @@ RuntimeDirectoryPreserve=yes
 StateDirectory=openclaw-deploy
 StateDirectoryMode=0750
 
-Environment=REPO_DIR=/opt/openclaw-dvb
+Environment=REPO_DIR=/opt/openclaw-glossary
 Environment=BRANCH=deploy
 Environment=RUN_DIR=/run/openclaw
 Environment=STATE_DIR=/var/lib/openclaw-deploy
 
-ExecStart=/opt/openclaw-dvb/deploy/reconcile.sh
+ExecStart=/opt/openclaw-glossary/deploy/reconcile.sh
 
 # Больше цикла таймера: если прогон завис, лучше убить его,
 # чем копить параллельные попытки.
