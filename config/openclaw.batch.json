@@ -15,30 +15,30 @@
         ]
     },
     {
-        "path": "agents.defaults.memorySearch.enabled",
+        "path": "memory.search.enabled",
         "value": true
     },
     {
-        "path": "agents.defaults.memorySearch.mode",
-        "value": "keyword"
+        "path": "memory.search.provider",
+        "value": "none"
     },
     {
-        "path": "agents.defaults.memorySearch.paths",
+        "path": "memory.search.extraPaths",
         "value": [
             "/home/node/.openclaw/workspace/knowledge"
         ]
     },
     {
-        "path": "agents.list.glossary.model",
-        "value": "custom-bothub-chat/deepseek-v4-flash"
+        "path": "memory.search.query.maxResults",
+        "value": 6
     },
     {
-        "path": "agents.list.glossary.memorySearch.enabled",
-        "value": true
+        "path": "memory.search.query.minScore",
+        "value": 0.35
     },
     {
-        "path": "agents.list.news.memorySearch.enabled",
-        "value": false
+        "path": "memory.citations",
+        "value": "auto"
     },
     {
         "path": "agents.defaults.sandbox.mode",
