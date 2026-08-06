@@ -23,6 +23,74 @@
         "value": true
     },
     {
+        "path": "agents.defaults.memorySearch.sources",
+        "value": [
+            "memory"
+        ]
+    },
+    {
+        "path": "agents.defaults.memorySearch.extraPaths",
+        "value": [
+            "/home/node/.openclaw/workspace/memory/knowledge"
+        ]
+    },
+    {
+        "path": "agents.defaults.memorySearch.provider",
+        "value": "openai-compatible"
+    },
+    {
+        "path": "agents.defaults.memorySearch.model",
+        "value": "text-embedding-3-small"
+    },
+    {
+        "path": "agents.defaults.memorySearch.remote.baseUrl",
+        "value": "https://bothub.chat/api/v2/openai/v1"
+    },
+    {
+        "path": "agents.defaults.memorySearch.remote.apiKey",
+        "value": {
+            "source": "env",
+            "provider": "default",
+            "id": "OPENAI_API_KEY"
+        }
+    },
+    {
+        "path": "agents.defaults.memorySearch.fallback",
+        "value": "none"
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.maxResults",
+        "value": 6
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.minScore",
+        "value": 0.3
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.hybrid.enabled",
+        "value": true
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.hybrid.textWeight",
+        "value": 0.65
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.hybrid.vectorWeight",
+        "value": 0.35
+    },
+    {
+        "path": "agents.defaults.memorySearch.query.hybrid.temporalDecay.enabled",
+        "value": false
+    },
+    {
+        "path": "agents.defaults.memorySearch.sync.watch",
+        "value": true
+    },
+    {
+        "path": "agents.defaults.memorySearch.sync.onSessionStart",
+        "value": true
+    },
+    {
         "path": "agents.defaults.sandbox.mode",
         "value": "off"
     }
