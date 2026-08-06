@@ -83,6 +83,13 @@ services:
       - gateway
     environment:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      # Обязательно те же, что у gateway. Ссылка вида
+      # {source: env, id: OPENAI_API_KEY} в конфиге памяти
+      # разворачивается процессом, который её читает — а `memory index`
+      # выполняется здесь, в сайдкаре. Без этих переменных индексация
+      # падает с "No API key found", хотя чат работает.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
     volumes:
       - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
       - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace
