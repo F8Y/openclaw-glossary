@@ -113,10 +113,10 @@
     {
         "path": "tools.alsoAllow",
         "value": [
-            "group:memory",
+            "memory_search",
+            "memory_get",
             "group:web",
             "group:messaging",
-            "ask_user",
             "cron",
             "session_status"
         ]
@@ -135,6 +135,22 @@
     {
         "path": "tools.web.search.enabled",
         "value": true
+    },
+    {
+        "path": "tools.web.search.maxResults",
+        "value": 8
+    },
+    {
+        "path": "tools.web.fetch.enabled",
+        "value": true
+    },
+    {
+        "path": "tools.web.fetch.maxRedirects",
+        "value": 10
+    },
+    {
+        "path": "tools.web.fetch.timeoutSeconds",
+        "value": 30
     },
     {
         "path": "plugins.entries.duckduckgo.enabled",
