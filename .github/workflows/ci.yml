@@ -79,6 +79,37 @@ jobs:
             jq empty "$f" && echo "OK: $f"
           done
 
+      - name: Web search описан декларативно
+        run: |
+          set -euo pipefail
+          jq -e '
+            any(.[];
+              .path == "plugins.entries.duckduckgo.enabled"
+              and .value == true
+            )
+            and any(.[];
+              .path == "tools.web.search.enabled"
+              and .value == true
+            )
+            and any(.[];
+              .path == "tools.web.search.provider"
+              and .value == "duckduckgo"
+            )
+            and any(.[];
+              .path == "tools.alsoAllow"
+              and (.value | index("web_search") != null)
+              and (.value | index("web_fetch") != null)
+            )
+            and any(.[];
+              .path == "models.providers.custom-bothub-chat.models[0].compat.supportsTools"
+              and .value == true
+            )
+            and any(.[];
+              .path == "tools.codeMode"
+              and .value == false
+            )
+          ' config/openclaw.batch.json
+
       - name: systemd-юниты валидны
         run: |
           sudo apt-get install -y -qq systemd
