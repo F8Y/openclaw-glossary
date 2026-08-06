@@ -97,13 +97,10 @@ jobs:
             )
             and any(.[];
               .path == "tools.alsoAllow"
-              and (.value | index("read") != null)
               and (.value | index("web_search") != null)
               and (.value | index("web_fetch") != null)
-            )
-            and any(.[];
-              .path == "tools.fs.workspaceOnly"
-              and .value == true
+              and (.value | index("memory_search") != null)
+              and (.value | index("read") == null)
             )
             and any(.[];
               .path == "models.providers.custom-bothub-chat.models[0].compat.supportsTools"
@@ -118,11 +115,30 @@ jobs:
       - name: Реестр внешних источников подключён
         run: |
           set -euo pipefail
-          test -s config/workspace/SOURCES.md
-          grep -Fq 'SOURCES.md' config/workspace/AGENTS.md
+
+          # Реестр живёт в базе знаний, а не в инструкциях агента:
+          # 11 КБ в каждом запросе приводили к context overflow.
+          test -s config/knowledge/sources.md
           grep -Fq 'developers.google.com/machine-learning/glossary' \
-            config/workspace/SOURCES.md
-          grep -Fq 'www.cbr.ru/dkp/voc/' config/workspace/SOURCES.md
+            config/knowledge/sources.md
+          grep -Fq 'www.cbr.ru/dkp/voc/' config/knowledge/sources.md
+
+          # AGENTS.md должен отправлять агента за реестром в память,
+          # а не ссылаться на файл, которого рядом больше нет.
+          grep -Fq 'memory_search' config/workspace/AGENTS.md
+          if grep -Fq 'SOURCES.md' config/workspace/AGENTS.md; then
+            echo "::error::AGENTS.md ссылается на SOURCES.md, которого нет в workspace"
+            exit 1
+          fi
+
+          # Бюджет контекста: инструкции читаются в каждой сессии.
+          BYTES=$(cat config/workspace/*.md | wc -c)
+          echo "инструкции: ${BYTES} байт"
+          if [ "$BYTES" -gt 20000 ]; then
+            echo "::error::инструкции разрослись до ${BYTES} байт — вынеси справочные данные в config/knowledge/"
+            exit 1
+          fi
+
           echo "source policy OK"
 
       - name: systemd-юниты валидны
