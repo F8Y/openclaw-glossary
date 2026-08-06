@@ -126,8 +126,23 @@ log "docker compose up -d"
 # --- Декларативный конфиг агентов -------------------------------------
 # Часть поведения гейтвей пишет в openclaw.json сам, поэтому файл
 # целиком не перезаписываем — применяем только свои ключи батчем.
+OPENCLAW_JSON="${OPENCLAW_STATE_DIR}/config/openclaw.json"
+
+# Хеш конфига БЕЗ служебных полей. `config set` переписывает
+# meta.lastTouchedAt при каждом применении, даже если ни одно значение
+# не изменилось, и CLI на это отвечает "Restart the gateway to apply.".
+# Ориентироваться на текст вывода нельзя: получался рестарт каждые
+# 5 минут, обрывавший диалоги посреди ответа.
+config_fingerprint() {
+    [[ -f "$OPENCLAW_JSON" ]] || { echo "нет-файла"; return; }
+    jq -S 'del(.meta)' "$OPENCLAW_JSON" 2>/dev/null | sha256sum | cut -d' ' -f1
+}
+
 if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
     log "применяем конфиг агентов"
+
+    FINGERPRINT_BEFORE="$(config_fingerprint)"
+
     if CONFIG_OUTPUT="$(
         "${COMPOSE[@]}" run --rm -T cli config set \
             --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" 2>&1
@@ -138,12 +153,18 @@ if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
         die "не удалось применить декларативный конфиг OpenClaw"
     fi
 
-    # Некоторые пути применяются hot-reload'ом, но изменения plugin
-    # registry требуют полного restart. CLI сам печатает точный hint;
-    # рестартуем только когда он действительно нужен, а не каждые 5 минут.
-    if grep -Fq "Restart the gateway to apply." <<< "$CONFIG_OUTPUT"; then
-        log "конфиг требует перезапуска gateway"
+    FINGERPRINT_AFTER="$(config_fingerprint)"
+
+    # Рестартуем только если реально изменилось хоть одно значение.
+    # Часть ключей применяется hot-reload'ом, но изменения plugin
+    # registry и gateway.* требуют полного перезапуска — лишний
+    # рестарт дешевле незамеченного изменения, а вот рестарт вхолостую
+    # ломает пользовательские сессии.
+    if [[ "$FINGERPRINT_BEFORE" != "$FINGERPRINT_AFTER" ]]; then
+        log "конфиг изменился, перезапускаем gateway"
         "${COMPOSE[@]}" restart gateway
+    else
+        log "конфиг без изменений, gateway не трогаем"
     fi
 fi
 

@@ -1,177 +1,172 @@
 [
-    {
-        "path": "gateway.mode",
-        "value": "local"
-    },
-    {
-        "path": "gateway.bind",
-        "value": "lan"
-    },
-    {
-        "path": "gateway.controlUi.allowedOrigins",
-        "value": [
-            "http://localhost:18789",
-            "http://127.0.0.1:18789"
-        ]
-    },
-    {
-        "path": "gateway.controlUi.allowInsecureAuth",
-        "value": false
-    },
-    {
-        "path": "gateway.auth.mode",
-        "value": "token"
-    },
-    {
-        "path": "gateway.auth.token",
-        "value": {
-            "source": "env",
-            "provider": "default",
-            "id": "OPENCLAW_GATEWAY_TOKEN"
-        }
-    },
-    {
-        "path": "agents.defaults.memorySearch.enabled",
-        "value": true
-    },
-    {
-        "path": "agents.defaults.memorySearch.sources",
-        "value": [
-            "memory"
-        ]
-    },
-    {
-        "path": "agents.defaults.memorySearch.extraPaths",
-        "value": [
-            "/home/node/.openclaw/workspace/memory/knowledge"
-        ]
-    },
-    {
-        "path": "agents.defaults.memorySearch.provider",
-        "value": "openai-compatible"
-    },
-    {
-        "path": "agents.defaults.memorySearch.model",
-        "value": "text-embedding-3-small"
-    },
-    {
-        "path": "agents.defaults.memorySearch.remote.baseUrl",
-        "value": "https://bothub.chat/api/v2/openai/v1"
-    },
-    {
-        "path": "agents.defaults.memorySearch.remote.apiKey",
-        "value": {
-            "source": "env",
-            "provider": "default",
-            "id": "OPENAI_API_KEY"
-        }
-    },
-    {
-        "path": "agents.defaults.memorySearch.fallback",
-        "value": "none"
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.maxResults",
-        "value": 6
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.minScore",
-        "value": 0.3
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.hybrid.enabled",
-        "value": true
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.hybrid.textWeight",
-        "value": 0.65
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.hybrid.vectorWeight",
-        "value": 0.35
-    },
-    {
-        "path": "agents.defaults.memorySearch.query.hybrid.temporalDecay.enabled",
-        "value": false
-    },
-    {
-        "path": "agents.defaults.memorySearch.sync.watch",
-        "value": true
-    },
-    {
-        "path": "agents.defaults.memorySearch.sync.onSessionStart",
-        "value": true
-    },
-    {
-        "path": "agents.defaults.sandbox.mode",
-        "value": "off"
-    },
-    {
-        "path": "models.providers.custom-bothub-chat.models[0].compat.supportsTools",
-        "value": true
-    },
-    {
-        "path": "plugins.entries.duckduckgo.enabled",
-        "value": true
-    },
-    {
-        "path": "tools.profile",
-        "value": "minimal"
-    },
-    {
-        "path": "tools.codeMode",
-        "value": false
-    },
-    {
-        "path": "tools.alsoAllow",
-        "value": [
-            "memory_search",
-            "memory_get",
-            "read",
-            "web_search",
-            "web_fetch",
-            "message",
-            "cron",
-            "session_status"
-        ]
-    },
-    {
-        "path": "tools.fs.workspaceOnly",
-        "value": true
-    },
-    {
-        "path": "tools.deny",
-        "value": [
-            "exec",
-            "process",
-            "write",
-            "edit",
-            "apply_patch",
-            "browser"
-        ]
-    },
-    {
-        "path": "tools.web.search.enabled",
-        "value": true
-    },
-    {
-        "path": "tools.web.search.provider",
-        "value": "duckduckgo"
-    },
-    {
-        "path": "tools.web.search.maxResults",
-        "value": 5
-    },
-    {
-        "path": "tools.web.fetch.enabled",
-        "value": true
-    },
-    {
-        "path": "tools.web.fetch.maxRedirects",
-        "value": 3
-    },
-    {
-        "path": "tools.web.fetch.timeoutSeconds",
-        "value": 15
+  {
+    "path": "gateway.mode",
+    "value": "local"
+  },
+  {
+    "path": "gateway.bind",
+    "value": "lan"
+  },
+  {
+    "path": "gateway.controlUi.allowedOrigins",
+    "value": [
+      "http://localhost:18789",
+      "http://127.0.0.1:18789"
+    ]
+  },
+  {
+    "path": "gateway.controlUi.allowInsecureAuth",
+    "value": false
+  },
+  {
+    "path": "gateway.auth.mode",
+    "value": "token"
+  },
+  {
+    "path": "gateway.auth.token",
+    "value": {
+      "source": "env",
+      "provider": "default",
+      "id": "OPENCLAW_GATEWAY_TOKEN"
     }
+  },
+  {
+    "path": "agents.defaults.memorySearch.enabled",
+    "value": true
+  },
+  {
+    "path": "agents.defaults.memorySearch.sources",
+    "value": [
+      "memory"
+    ]
+  },
+  {
+    "path": "agents.defaults.memorySearch.extraPaths",
+    "value": [
+      "/home/node/.openclaw/workspace/memory/knowledge"
+    ]
+  },
+  {
+    "path": "agents.defaults.memorySearch.provider",
+    "value": "openai-compatible"
+  },
+  {
+    "path": "agents.defaults.memorySearch.model",
+    "value": "text-embedding-3-small"
+  },
+  {
+    "path": "agents.defaults.memorySearch.remote.baseUrl",
+    "value": "https://bothub.chat/api/v2/openai/v1"
+  },
+  {
+    "path": "agents.defaults.memorySearch.remote.apiKey",
+    "value": {
+      "source": "env",
+      "provider": "default",
+      "id": "OPENAI_API_KEY"
+    }
+  },
+  {
+    "path": "agents.defaults.memorySearch.fallback",
+    "value": "none"
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.maxResults",
+    "value": 6
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.minScore",
+    "value": 0.3
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.hybrid.enabled",
+    "value": true
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.hybrid.textWeight",
+    "value": 0.65
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.hybrid.vectorWeight",
+    "value": 0.35
+  },
+  {
+    "path": "agents.defaults.memorySearch.query.hybrid.temporalDecay.enabled",
+    "value": false
+  },
+  {
+    "path": "agents.defaults.memorySearch.sync.watch",
+    "value": true
+  },
+  {
+    "path": "agents.defaults.memorySearch.sync.onSessionStart",
+    "value": true
+  },
+  {
+    "path": "agents.defaults.sandbox.mode",
+    "value": "off"
+  },
+  {
+    "path": "models.providers.custom-bothub-chat.models[0].compat.supportsTools",
+    "value": true
+  },
+  {
+    "path": "plugins.entries.duckduckgo.enabled",
+    "value": true
+  },
+  {
+    "path": "tools.profile",
+    "value": "minimal"
+  },
+  {
+    "path": "tools.codeMode",
+    "value": false
+  },
+  {
+    "path": "tools.alsoAllow",
+    "value": [
+      "memory_search",
+      "memory_get",
+      "web_search",
+      "web_fetch",
+      "message",
+      "cron",
+      "session_status"
+    ]
+  },
+  {
+    "path": "tools.deny",
+    "value": [
+      "exec",
+      "process",
+      "write",
+      "edit",
+      "apply_patch",
+      "browser"
+    ]
+  },
+  {
+    "path": "tools.web.search.enabled",
+    "value": true
+  },
+  {
+    "path": "tools.web.search.provider",
+    "value": "duckduckgo"
+  },
+  {
+    "path": "tools.web.search.maxResults",
+    "value": 5
+  },
+  {
+    "path": "tools.web.fetch.enabled",
+    "value": true
+  },
+  {
+    "path": "tools.web.fetch.maxRedirects",
+    "value": 3
+  },
+  {
+    "path": "tools.web.fetch.timeoutSeconds",
+    "value": 15
+  }
 ]
