@@ -23,10 +23,8 @@
         "value": "none"
     },
     {
-        "path": "memory.search.extraPaths",
-        "value": [
-            "/home/node/.openclaw/workspace/knowledge"
-        ]
+        "path": "gateway.controlUi.allowInsecureAuth",
+        "value": false
     },
     {
         "path": "memory.search.query.maxResults",

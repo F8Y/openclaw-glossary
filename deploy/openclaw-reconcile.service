@@ -1,6 +1,6 @@
 [Unit]
 Description=OpenClaw GitOps reconcile
-Documentation=https://github.com/F8Y/openclaw-glossary
+Documentation=https://github.com/OWNER/openclaw-dvb
 After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -17,15 +17,21 @@ User=root
 RuntimeDirectory=openclaw
 RuntimeDirectoryMode=0700
 
+# Без этого systemd удаляет /run/openclaw при остановке юнита, а
+# Type=oneshot завершается сразу после реконсиля. Тогда расшифрованный
+# .env исчезает и ручные команды docker compose падают с
+# "couldn't find env file". Секреты всё равно в tmpfs: ребут их стирает.
+RuntimeDirectoryPreserve=yes
+
 StateDirectory=openclaw-deploy
 StateDirectoryMode=0750
 
-Environment=REPO_DIR=/opt/openclaw-glossary
+Environment=REPO_DIR=/opt/openclaw-dvb
 Environment=BRANCH=deploy
 Environment=RUN_DIR=/run/openclaw
 Environment=STATE_DIR=/var/lib/openclaw-deploy
 
-ExecStart=/opt/openclaw-glossary/deploy/reconcile.sh
+ExecStart=/opt/openclaw-dvb/deploy/reconcile.sh
 
 # Больше цикла таймера: если прогон завис, лучше убить его,
 # чем копить параллельные попытки.

@@ -10,7 +10,7 @@
 # Запускается из openclaw-reconcile.service, не вручную.
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/opt/openclaw-glossary}"
+REPO_DIR="${REPO_DIR:-/opt/openclaw-dvb}"
 BRANCH="${BRANCH:-deploy}"
 RUN_DIR="${RUN_DIR:-/run/openclaw}"
 ENV_FILE="${RUN_DIR}/env"
@@ -86,11 +86,20 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f "${REPO_DIR}/docker-compose.ym
 # в репозитории файл должен исчезнуть и из базы знаний.
 if [[ -d "${REPO_DIR}/config/knowledge" ]]; then
     log "синхронизируем базу знаний"
-    mkdir -p "${OPENCLAW_STATE_DIR}/workspace/knowledge"
+
+    # Кладём В штатный корень памяти (<workspace>/memory), но в свой
+    # подкаталог. Движок сканирует memory/**/*.md рекурсивно, поэтому
+    # extraPaths не нужен.
+    #
+    # Подкаталог обязателен: в memory/ пишет сам агент (session-memory
+    # hook, .dreams/), и rsync --delete по всему memory/ снёс бы это.
+    # Так удаление ограничено нашей папкой.
+    KNOWLEDGE_DST="${OPENCLAW_STATE_DIR}/workspace/memory/knowledge"
+    mkdir -p "$KNOWLEDGE_DST"
     rsync -a --delete \
         "${REPO_DIR}/config/knowledge/" \
-        "${OPENCLAW_STATE_DIR}/workspace/knowledge/"
-    chown -R 1000:1000 "${OPENCLAW_STATE_DIR}/workspace/knowledge"
+        "${KNOWLEDGE_DST}/"
+    chown -R 1000:1000 "${OPENCLAW_STATE_DIR}/workspace/memory"
 fi
 
 # --- Применение стека -------------------------------------------------
