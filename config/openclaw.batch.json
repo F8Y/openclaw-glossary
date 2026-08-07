@@ -211,5 +211,9 @@
       "digest",
       "sources"
     ]
+  },
+  {
+    "path": "models.providers.custom-bothub-chat.models[0].compat.visibleReasoningDetailTypes",
+    "value": []
   }
 ]
