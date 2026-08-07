@@ -41,12 +41,6 @@
     ]
   },
   {
-    "path": "agents.defaults.memorySearch.extraPaths",
-    "value": [
-      "/home/node/.openclaw/workspace/memory/knowledge"
-    ]
-  },
-  {
     "path": "agents.defaults.memorySearch.provider",
     "value": "openai-compatible"
   },
@@ -188,10 +182,6 @@
       {
         "command": "about",
         "description": "Что умеет Glossaryck"
-      },
-      {
-        "command": "term",
-        "description": "Разобрать термин или сокращение"
       },
       {
         "command": "digest",
