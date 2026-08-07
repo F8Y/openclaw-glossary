@@ -234,5 +234,9 @@
   {
     "path": "channels.telegram.streaming.progress.commentary",
     "value": false
+  },
+  {
+    "path": "models.providers.custom-bothub-chat.timeoutSeconds",
+    "value": 90
   }
 ]
