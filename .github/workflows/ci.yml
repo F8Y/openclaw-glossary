@@ -156,7 +156,7 @@ jobs:
           # Каждый пункт меню обязан иметь одноимённый скилл: customCommands
           # только рисует кнопку, выполняет её workspace-скилл. Пункт без
           # скилла — кнопка, которая молча ничего не делает.
-          MENU=$(jq -r '.[] | select(.path=="channels.telegram.commands.customCommands")
+          MENU=$(jq -r '.[] | select(.path=="channels.telegram.customCommands")
                         | .value[].command' config/openclaw.batch.json)
           for c in $MENU; do
             test -f "config/workspace/skills/$c/SKILL.md" \

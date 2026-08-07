@@ -183,7 +183,7 @@
     "value": true
   },
   {
-    "path": "channels.telegram.commands.customCommands",
+    "path": "channels.telegram.customCommands",
     "value": [
       {
         "command": "about",
