@@ -168,5 +168,13 @@
   {
     "path": "tools.web.fetch.timeoutSeconds",
     "value": 15
+  },
+  {
+    "path": "channels.telegram.commands.native",
+    "value": false
+  },
+  {
+    "path": "channels.telegram.commands.nativeSkills",
+    "value": true
   }
 ]
