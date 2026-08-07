@@ -44,6 +44,10 @@ services:
       - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
       - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace
       - ${OPENCLAW_STATE_DIR}/secrets:/home/node/.config/openclaw
+      # Плагин хранится в Git. Явный read-only bind гарантирует, что
+      # он существует в том же mount namespace, где OpenClaw валидирует
+      # plugins.load.paths.
+      - ./extensions/glossary-ui:/home/node/.openclaw/extensions/glossary-ui:ro
 
     # Образ работает под uid 1000 (node). Бинд-маунты должны
     # принадлежать 1000:1000, иначе EACCES при старте.
@@ -98,6 +102,9 @@ services:
       - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
       - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace
       - ${OPENCLAW_STATE_DIR}/secrets:/home/node/.config/openclaw
+      # CLI валидирует конфиг в отдельном контейнере, поэтому тот же
+      # плагин должен быть смонтирован и сюда, а не только в gateway.
+      - ./extensions/glossary-ui:/home/node/.openclaw/extensions/glossary-ui:ro
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
