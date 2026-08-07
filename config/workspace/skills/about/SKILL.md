@@ -12,9 +12,17 @@ user-invocable: true
 
 ## Одно сообщение, не два
 
-Отправь ровно один `send` с кнопками и **больше ничего не пиши**. Текст
-целиком идёт внутри действия. Если написать ещё и обычный ответ, человек
-получит одно и то же дважды.
+Отправь ровно один `send` и **больше ничего не пиши**. Текст целиком идёт
+внутри действия. Обычный ответ следом продублирует сообщение.
+
+## Почему ссылки, а не callback
+
+Кнопки с `action: { type: "callback" }` в этой сборке отрисовываются,
+но нажатие до агента не доходит — проверено на живом стенде. Поэтому
+используем deep-link: нажатие отправляет боту обычное сообщение
+`/start <payload>`, а этот путь работает надёжно.
+
+В `start`-параметре Telegram разрешает только латиницу, цифры, `_` и `-`.
 
 ```json
 {
@@ -26,16 +34,16 @@ user-invocable: true
       {
         "type": "buttons",
         "buttons": [
-          { "label": "ROE", "action": { "type": "callback", "value": "ROE" } },
-          { "label": "EBITDA", "action": { "type": "callback", "value": "EBITDA" } },
-          { "label": "RAG", "action": { "type": "callback", "value": "RAG" } }
+          { "label": "ROE", "action": { "type": "url", "url": "https://t.me/glossary_ai_bot?start=term_ROE" } },
+          { "label": "EBITDA", "action": { "type": "url", "url": "https://t.me/glossary_ai_bot?start=term_EBITDA" } },
+          { "label": "RAG", "action": { "type": "url", "url": "https://t.me/glossary_ai_bot?start=term_RAG" } }
         ]
       },
       {
         "type": "buttons",
         "buttons": [
-          { "label": "📰 Новости об ИИ", "action": { "type": "callback", "value": "/digest" } },
-          { "label": "🔍 Источники", "action": { "type": "callback", "value": "/sources" } }
+          { "label": "📰 Новости об ИИ", "action": { "type": "url", "url": "https://t.me/glossary_ai_bot?start=cmd_digest" } },
+          { "label": "🔍 Источники", "action": { "type": "url", "url": "https://t.me/glossary_ai_bot?start=cmd_sources" } }
         ]
       }
     ]
@@ -63,16 +71,10 @@ user-invocable: true
 
 ---
 
-## Кнопки
+## Правила
 
-Первый ряд — примеры терминов. Нажатие вернётся тебе как
-`callback_data: ROE`, то есть обычный вопрос о термине: отвечай
-карточкой по скиллу `term`.
-
-Второй ряд — команды, обрабатывай как `/digest` и `/sources`.
-
-Кнопки работают только в личных чатах. В группе отправляй тот же текст
-без блока `presentation`.
+Кнопки только в личных чатах. В группе отправляй тот же текст без блока
+`presentation`.
 
 Больше двух рядов не делай: на телефоне остальное уезжает за экран.
 
