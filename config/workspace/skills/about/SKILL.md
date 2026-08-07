@@ -39,6 +39,7 @@ user-invocable: true
 
 **Ещё умею**
 
+📚 [Каталог терминов](https://t.me/glossary_ai_bot?start=cmd_knowledge)
 📰 [Новости об ИИ](https://t.me/glossary_ai_bot?start=cmd_digest)
 🔍 [Мои источники](https://t.me/glossary_ai_bot?start=cmd_sources)
 

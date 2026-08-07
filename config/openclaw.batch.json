@@ -184,6 +184,10 @@
         "description": "Что умеет Glossaryck"
       },
       {
+        "command": "knowledge",
+        "description": "Каталог терминов и моделей"
+      },
+      {
         "command": "digest",
         "description": "Дайджест новостей об ИИ"
       },
@@ -199,7 +203,8 @@
       "about",
       "term",
       "digest",
-      "sources"
+      "sources",
+      "knowledge"
     ]
   },
   {
