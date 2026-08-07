@@ -238,5 +238,13 @@
   {
     "path": "models.providers.custom-bothub-chat.timeoutSeconds",
     "value": 90
+  },
+  {
+    "path": "channels.telegram.allowFrom",
+    "value": [
+      "414005287",
+      "644686471",
+      "270887394"
+    ]
   }
 ]
