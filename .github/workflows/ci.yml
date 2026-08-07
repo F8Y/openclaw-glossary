@@ -100,7 +100,15 @@ jobs:
               and (.value | index("web_search") != null)
               and (.value | index("web_fetch") != null)
               and (.value | index("memory_search") != null)
-              and (.value | index("read") == null)
+              and (.value | index("read") != null)
+            )
+            and any(.[];
+              .path == "tools.fs.workspaceOnly"
+              and .value == true
+            )
+            and any(.[];
+              .path == "agents.defaults.skills"
+              and (.value | length) <= 6
             )
             and any(.[];
               .path == "models.providers.custom-bothub-chat.models[0].compat.supportsTools"
@@ -140,6 +148,30 @@ jobs:
           fi
 
           echo "source policy OK"
+
+      - name: Меню и скиллы согласованы
+        run: |
+          set -euo pipefail
+
+          # Каждый пункт меню обязан иметь одноимённый скилл: customCommands
+          # только рисует кнопку, выполняет её workspace-скилл. Пункт без
+          # скилла — кнопка, которая молча ничего не делает.
+          MENU=$(jq -r '.[] | select(.path=="channels.telegram.commands.customCommands")
+                        | .value[].command' config/openclaw.batch.json)
+          for c in $MENU; do
+            test -f "config/workspace/skills/$c/SKILL.md" \
+              || { echo "::error::в меню есть /$c, но нет config/workspace/skills/$c/SKILL.md"; exit 1; }
+          done
+
+          # И наоборот: скилл должен быть в allowlist, иначе агент его не увидит.
+          ALLOW=$(jq -r '.[] | select(.path=="agents.defaults.skills") | .value[]' \
+                    config/openclaw.batch.json)
+          for c in $MENU; do
+            echo "$ALLOW" | grep -qx "$c" \
+              || { echo "::error::/$c отсутствует в agents.defaults.skills"; exit 1; }
+          done
+
+          echo "меню и скиллы согласованы: $(echo $MENU | tr '\n' ' ')"
 
       - name: systemd-юниты валидны
         run: |

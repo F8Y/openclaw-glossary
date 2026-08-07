@@ -127,6 +127,7 @@
     "value": [
       "memory_search",
       "memory_get",
+      "read",
       "web_search",
       "web_fetch",
       "message",
@@ -175,6 +176,40 @@
   },
   {
     "path": "channels.telegram.commands.nativeSkills",
+    "value": false
+  },
+  {
+    "path": "tools.fs.workspaceOnly",
     "value": true
+  },
+  {
+    "path": "channels.telegram.commands.customCommands",
+    "value": [
+      {
+        "command": "about",
+        "description": "Что умеет Glossaryck"
+      },
+      {
+        "command": "term",
+        "description": "Разобрать термин или сокращение"
+      },
+      {
+        "command": "digest",
+        "description": "Дайджест новостей об ИИ"
+      },
+      {
+        "command": "sources",
+        "description": "Откуда я беру информацию"
+      }
+    ]
+  },
+  {
+    "path": "agents.defaults.skills",
+    "value": [
+      "about",
+      "term",
+      "digest",
+      "sources"
+    ]
   }
 ]
