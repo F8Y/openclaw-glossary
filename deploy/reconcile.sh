@@ -56,11 +56,16 @@ fi
 # /run — tmpfs, содержимое не переживает перезагрузку и не попадает
 # на диск. Секретам на диске делать нечего.
 log "расшифровываем секреты"
+PREVIOUS_UMASK="$(umask)"
 umask 077
 SOPS_AGE_KEY_FILE=/root/.config/sops/age/keys.txt \
     sops --decrypt --output-type dotenv secrets/openclaw.enc.yaml > "$ENV_FILE" \
     || die "sops не смог расшифровать secrets/openclaw.enc.yaml"
 chmod 600 "$ENV_FILE"
+# Ограниченная umask нужна только файлу с секретами. Если оставить 077,
+# последующие каталоги создаются root:root/0700, и uid 1000 внутри
+# контейнера не может пройти к локальным плагинам.
+umask "$PREVIOUS_UMASK"
 
 # Директива должна стоять непосредственно над `source`: в составной
 # строке `set -a; source ...; set +a` она привязалась бы к `set -a`.
@@ -125,10 +130,14 @@ fi
 # но без рестарта gateway продолжил бы исполнять старый модуль.
 PLUGIN_CHANGED=0
 PLUGIN_SRC="${REPO_DIR}/extensions/glossary-ui"
-PLUGIN_DST="${OPENCLAW_STATE_DIR}/config/extensions/glossary-ui"
+PLUGIN_ROOT="${OPENCLAW_STATE_DIR}/config/extensions"
+PLUGIN_DST="${PLUGIN_ROOT}/glossary-ui"
 
 [[ -d "$PLUGIN_SRC" ]] || die "нет исходников плагина glossary-ui"
-mkdir -p "$PLUGIN_DST"
+# install -d не только создаёт каталог, но и чинит владельца/режим уже
+# существующего root:root/0700 после прежних запусков с umask 077.
+install -d -o 1000 -g 1000 -m 0700 "$PLUGIN_ROOT"
+install -d -o 1000 -g 1000 -m 0755 "$PLUGIN_DST"
 
 PLUGIN_DIFF="$(rsync -ain --no-owner --no-group --delete \
     "${PLUGIN_SRC}/" "${PLUGIN_DST}/")"
@@ -141,6 +150,10 @@ fi
 
 rsync -a --no-owner --no-group --delete "${PLUGIN_SRC}/" "${PLUGIN_DST}/"
 chown -R 1000:1000 "$PLUGIN_DST"
+# rsync -a сохраняет режим исходного каталога, но родитель обязан
+# оставаться доступным только владельцу node и при этом проходимым для него.
+chown 1000:1000 "$PLUGIN_ROOT"
+chmod 0700 "$PLUGIN_ROOT"
 
 # --- Применение стека -------------------------------------------------
 log "docker compose up -d"
