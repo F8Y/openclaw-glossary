@@ -1,0 +1,102 @@
+{
+  "botUsername": "glossary_ai_bot",
+  "commands": [
+    "menu",
+    "about",
+    "explain",
+    "knowledge",
+    "sources",
+    "start"
+  ],
+  "categories": [
+    {
+      "id": "popular",
+      "label": "🔥 Популярные термины",
+      "buttonLabel": "🔥 Популярное",
+      "description": "Термины, с которых проще всего начать.",
+      "terms": [
+        { "label": "RAG", "payload": "RAG" },
+        { "label": "Токен", "payload": "token" },
+        { "label": "Инференс", "payload": "inference" },
+        { "label": "ROE", "payload": "ROE" },
+        { "label": "EBITDA", "payload": "EBITDA" },
+        { "label": "WACC", "payload": "WACC" },
+        { "label": "GPT", "payload": "GPT" },
+        { "label": "Gemini", "payload": "Gemini" }
+      ]
+    },
+    {
+      "id": "ai",
+      "label": "🤖 Искусственный интеллект",
+      "buttonLabel": "🤖 Термины ИИ",
+      "description": "Как модели учатся, отвечают и ищут информацию.",
+      "terms": [
+        { "label": "RAG", "payload": "RAG" },
+        { "label": "Инференс", "payload": "inference" },
+        { "label": "Токен", "payload": "token" },
+        { "label": "Контекстное окно", "payload": "context" },
+        { "label": "Эмбеддинг", "payload": "embedding" },
+        { "label": "Галлюцинация", "payload": "hallucination" },
+        { "label": "BM25", "payload": "BM25" },
+        { "label": "MCP", "payload": "MCP" },
+        { "label": "FTS", "payload": "FTS" }
+      ]
+    },
+    {
+      "id": "finance",
+      "label": "💰 Финансы",
+      "buttonLabel": "💰 Финансы",
+      "description": "Отчётность, стоимость капитала и метрики бизнеса.",
+      "terms": [
+        { "label": "ROE", "payload": "ROE" },
+        { "label": "ROA", "payload": "ROA" },
+        { "label": "ROIC", "payload": "ROIC" },
+        { "label": "WACC", "payload": "WACC" },
+        { "label": "EBITDA", "payload": "EBITDA" },
+        { "label": "P/E", "payload": "PE" },
+        { "label": "DCF", "payload": "DCF" },
+        { "label": "CAGR", "payload": "CAGR" },
+        { "label": "FCF", "payload": "FCF" },
+        { "label": "CAC и LTV", "payload": "CAC" },
+        { "label": "ARR и MRR", "payload": "ARR" }
+      ]
+    },
+    {
+      "id": "models",
+      "label": "🧠 Языковые модели",
+      "buttonLabel": "🧠 Модели",
+      "description": "Семейства моделей и их разработчики.",
+      "terms": [
+        { "label": "GPT", "payload": "GPT" },
+        { "label": "Claude", "payload": "Claude" },
+        { "label": "Gemini", "payload": "Gemini" },
+        { "label": "DeepSeek", "payload": "DeepSeek" },
+        { "label": "Qwen", "payload": "Qwen" },
+        { "label": "GigaChat", "payload": "GigaChat" },
+        { "label": "YandexGPT", "payload": "YandexGPT" }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "🤖 Google ML",
+      "url": "https://developers.google.com/machine-learning/glossary"
+    },
+    {
+      "label": "🏦 Банк России",
+      "url": "https://www.cbr.ru/dkp/voc/"
+    },
+    {
+      "label": "🧪 OpenAI News",
+      "url": "https://openai.com/news/"
+    },
+    {
+      "label": "🔬 Google DeepMind",
+      "url": "https://deepmind.google/discover/blog/"
+    },
+    {
+      "label": "📊 Независимые замеры",
+      "url": "https://artificialanalysis.ai/leaderboards/models"
+    }
+  ]
+}

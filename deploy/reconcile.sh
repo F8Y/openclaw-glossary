@@ -118,6 +118,30 @@ if [[ -d "${REPO_DIR}/config/workspace" ]]; then
     chown -R 1000:1000 "${OPENCLAW_STATE_DIR}/workspace"
 fi
 
+# --- Локальные плагины -----------------------------------------------
+# Плагин живёт в git, а OpenClaw ищет внешние расширения в своём
+# config-root. Поэтому переносим пакет целиком до запуска compose и
+# отдельно помечаем изменение кода: config fingerprint его не видит,
+# но без рестарта gateway продолжил бы исполнять старый модуль.
+PLUGIN_CHANGED=0
+PLUGIN_SRC="${REPO_DIR}/extensions/glossary-ui"
+PLUGIN_DST="${OPENCLAW_STATE_DIR}/config/extensions/glossary-ui"
+
+[[ -d "$PLUGIN_SRC" ]] || die "нет исходников плагина glossary-ui"
+mkdir -p "$PLUGIN_DST"
+
+PLUGIN_DIFF="$(rsync -ain --no-owner --no-group --delete \
+    "${PLUGIN_SRC}/" "${PLUGIN_DST}/")"
+if [[ -n "$PLUGIN_DIFF" ]]; then
+    PLUGIN_CHANGED=1
+    log "плагин glossary-ui изменился"
+else
+    log "плагин glossary-ui без изменений"
+fi
+
+rsync -a --no-owner --no-group --delete "${PLUGIN_SRC}/" "${PLUGIN_DST}/"
+chown -R 1000:1000 "$PLUGIN_DST"
+
 # --- Применение стека -------------------------------------------------
 log "docker compose up -d"
 "${COMPOSE[@]}" pull --quiet gateway || log "pull не удался, работаем на локальном образе"
@@ -138,6 +162,7 @@ config_fingerprint() {
     jq -S 'del(.meta)' "$OPENCLAW_JSON" 2>/dev/null | sha256sum | cut -d' ' -f1
 }
 
+CONFIG_CHANGED=0
 if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
     log "применяем конфиг агентов"
 
@@ -155,17 +180,22 @@ if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
 
     FINGERPRINT_AFTER="$(config_fingerprint)"
 
-    # Рестартуем только если реально изменилось хоть одно значение.
-    # Часть ключей применяется hot-reload'ом, но изменения plugin
-    # registry и gateway.* требуют полного перезапуска — лишний
-    # рестарт дешевле незамеченного изменения, а вот рестарт вхолостую
-    # ломает пользовательские сессии.
     if [[ "$FINGERPRINT_BEFORE" != "$FINGERPRINT_AFTER" ]]; then
-        log "конфиг изменился, перезапускаем gateway"
-        "${COMPOSE[@]}" restart gateway
+        CONFIG_CHANGED=1
+        log "конфиг изменился"
     else
-        log "конфиг без изменений, gateway не трогаем"
+        log "конфиг без изменений"
     fi
+fi
+
+# Часть ключей применяется hot-reload'ом, но plugin registry и код
+# плагинов требуют полного перезапуска. Не рестартуем вхолостую каждые
+# пять минут: это обрывало пользовательские диалоги посреди ответа.
+if [[ "$CONFIG_CHANGED" -eq 1 || "$PLUGIN_CHANGED" -eq 1 ]]; then
+    log "желаемое состояние изменилось, перезапускаем gateway"
+    "${COMPOSE[@]}" restart gateway
+else
+    log "конфиг и плагины без изменений, gateway не трогаем"
 fi
 
 # --- Health gate -------------------------------------------------------

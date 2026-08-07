@@ -1,0 +1,14 @@
+{
+  "id": "glossary-ui",
+  "name": "Glossaryck Telegram UI",
+  "description": "Deterministic Telegram menu and knowledge catalog without an LLM round-trip",
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
