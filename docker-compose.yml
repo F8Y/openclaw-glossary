@@ -33,6 +33,9 @@ services:
       OPENCLAW_GATEWAY_BIND: lan
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      # Запасной провайдер: Cloud.ru Foundation Models. Стоит в том же
+      # облаке, что и VM, поэтому сетевой путь короче, чем до BotHub.
+      CLOUDRU_API_KEY: ${CLOUDRU_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       NODE_ENV: production
       TZ: Europe/Moscow
@@ -90,6 +93,7 @@ services:
       # падает с "No API key found", хотя чат работает.
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      CLOUDRU_API_KEY: ${CLOUDRU_API_KEY:-}
     volumes:
       - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
       - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace

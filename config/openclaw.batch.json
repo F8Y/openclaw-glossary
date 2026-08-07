@@ -109,6 +109,16 @@
     "value": true
   },
   {
+    "path": "plugins.load.paths",
+    "value": [
+      "/home/node/.openclaw/extensions/glossary-ui"
+    ]
+  },
+  {
+    "path": "plugins.entries.glossary-ui.enabled",
+    "value": true
+  },
+  {
     "path": "tools.profile",
     "value": "minimal"
   },
@@ -180,8 +190,8 @@
     "path": "channels.telegram.customCommands",
     "value": [
       {
-        "command": "about",
-        "description": "Что умеет Glossaryck"
+        "command": "menu",
+        "description": "Главное меню Glossaryck"
       },
       {
         "command": "knowledge",
@@ -248,14 +258,6 @@
     ]
   },
   {
-    "path": "channels.telegram.allowFrom",
-    "value": [
-      "414005287",
-      "644686471",
-      "270887394"
-    ]
-  },
-  {
     "path": "commands.text",
     "value": true
   },
@@ -278,5 +280,50 @@
   {
     "path": "channels.telegram.dmPolicy",
     "value": "allowlist"
+  },
+  {
+    "path": "models.providers.cloudru.baseUrl",
+    "value": "https://foundation-models.api.cloud.ru/v1"
+  },
+  {
+    "path": "models.providers.cloudru.api",
+    "value": "openai-completions"
+  },
+  {
+    "path": "models.providers.cloudru.apiKey",
+    "value": {
+      "source": "env",
+      "provider": "default",
+      "id": "CLOUDRU_API_KEY"
+    }
+  },
+  {
+    "path": "models.providers.cloudru.timeoutSeconds",
+    "value": 90
+  },
+  {
+    "path": "models.providers.cloudru.models",
+    "value": [
+      {
+        "id": "deepseek-ai/DeepSeek-V4-Flash",
+        "name": "DeepSeek V4 Flash (Cloud.ru)",
+        "reasoning": false,
+        "input": [
+          "text"
+        ],
+        "contextWindow": 128000,
+        "maxTokens": 8192,
+        "compat": {
+          "supportsTools": true,
+          "visibleReasoningDetailTypes": []
+        }
+      }
+    ]
+  },
+  {
+    "path": "agents.defaults.model.fallbacks",
+    "value": [
+      "cloudru/deepseek-ai/DeepSeek-V4-Flash"
+    ]
   }
 ]

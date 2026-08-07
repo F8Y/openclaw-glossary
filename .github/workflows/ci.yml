@@ -79,6 +79,57 @@ jobs:
             jq empty "$f" && echo "OK: $f"
           done
 
+      - name: В batch нет дублирующихся путей
+        run: |
+          set -euo pipefail
+
+          # Дубль опасен тем, что незаметен: значения совпадают, пока
+          # кто-нибудь не поправит одну копию. Применится другая, и на
+          # поиск причины уйдёт час.
+          DUPES=$(jq -r '[.[].path] | group_by(.) | map(select(length>1)) | flatten | unique | .[]' \
+                    config/openclaw.batch.json)
+          if [ -n "$DUPES" ]; then
+            echo "::error::дублирующиеся пути в openclaw.batch.json:"
+            echo "$DUPES" | while read -r p; do echo "::error::  $p"; done
+            exit 1
+          fi
+          echo "дублей нет, путей: $(jq length config/openclaw.batch.json)"
+
+      - name: Telegram UI plugin
+        run: |
+          set -euo pipefail
+
+          PLUGIN=extensions/glossary-ui
+          test -s "$PLUGIN/openclaw.plugin.json"
+          test -s "$PLUGIN/package.json"
+          test -s "$PLUGIN/ui-config.json"
+
+          jq -e '
+            .id == "glossary-ui"
+            and .configSchema.type == "object"
+            and .configSchema.additionalProperties == false
+          ' "$PLUGIN/openclaw.plugin.json"
+          jq -e '
+            .botUsername == "glossary_ai_bot"
+            and (.commands | index("menu") != null)
+            and (.commands | index("knowledge") != null)
+            and (.commands | index("sources") != null)
+            and (.categories | length >= 4)
+          ' "$PLUGIN/ui-config.json"
+          jq -e '
+            any(.[];
+              .path == "plugins.entries.glossary-ui.enabled"
+              and .value == true
+            )
+            and any(.[];
+              .path == "plugins.load.paths"
+              and (.value | index("/home/node/.openclaw/extensions/glossary-ui") != null)
+            )
+          ' config/openclaw.batch.json
+
+          for f in "$PLUGIN"/*.js; do node --check "$f"; done
+          node --test "$PLUGIN"/*.test.js
+
       - name: Web search описан декларативно
         run: |
           set -euo pipefail
@@ -157,25 +208,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Каждый пункт меню обязан иметь одноимённый скилл: customCommands
-          # только рисует кнопку, выполняет её workspace-скилл. Пункт без
-          # скилла — кнопка, которая молча ничего не делает.
+          # Пункт меню обязан иметь обработчик: либо workspace-скилл,
+          # либо детерминированную команду UI-плагина.
           MENU=$(jq -r '.[] | select(.path=="channels.telegram.customCommands")
                         | .value[].command' config/openclaw.batch.json)
-          for c in $MENU; do
-            test -f "config/workspace/skills/$c/SKILL.md" \
-              || { echo "::error::в меню есть /$c, но нет config/workspace/skills/$c/SKILL.md"; exit 1; }
-          done
-
-          # И наоборот: скилл должен быть в allowlist, иначе агент его не увидит.
           ALLOW=$(jq -r '.[] | select(.path=="agents.defaults.skills") | .value[]' \
                     config/openclaw.batch.json)
+          PLUGIN_COMMANDS=$(jq -r '.commands[]' extensions/glossary-ui/ui-config.json)
+
           for c in $MENU; do
-            echo "$ALLOW" | grep -qx "$c" \
-              || { echo "::error::/$c отсутствует в agents.defaults.skills"; exit 1; }
+            if test -f "config/workspace/skills/$c/SKILL.md"; then
+              echo "$ALLOW" | grep -qx "$c" \
+                || { echo "::error::/$c отсутствует в agents.defaults.skills"; exit 1; }
+            elif echo "$PLUGIN_COMMANDS" | grep -qx "$c"; then
+              : # Команда существует и выполняется без модели.
+            else
+              echo "::error::в меню есть /$c, но нет ни скилла, ни plugin-команды"
+              exit 1
+            fi
           done
 
-          echo "меню и скиллы согласованы: $(echo $MENU | tr '\n' ' ')"
+          echo "меню и обработчики согласованы: $(echo $MENU | tr '\n' ' ')"
 
       - name: systemd-юниты валидны
         run: |
