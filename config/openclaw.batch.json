@@ -246,5 +246,37 @@
       "644686471",
       "270887394"
     ]
+  },
+  {
+    "path": "channels.telegram.allowFrom",
+    "value": [
+      "414005287",
+      "644686471",
+      "270887394"
+    ]
+  },
+  {
+    "path": "commands.text",
+    "value": true
+  },
+  {
+    "path": "commands.allowFrom",
+    "value": {
+      "telegram": [
+        "414005287",
+        "644686471",
+        "270887394"
+      ]
+    }
+  },
+  {
+    "path": "commands.ownerAllowFrom",
+    "value": [
+      "telegram:414005287"
+    ]
+  },
+  {
+    "path": "channels.telegram.dmPolicy",
+    "value": "allowlist"
   }
 ]
