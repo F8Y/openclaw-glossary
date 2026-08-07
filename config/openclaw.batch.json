@@ -215,5 +215,29 @@
   {
     "path": "models.providers.custom-bothub-chat.models[0].compat.visibleReasoningDetailTypes",
     "value": []
+  },
+  {
+    "path": "channels.telegram.markdown.tables",
+    "value": "bullets"
+  },
+  {
+    "path": "channels.telegram.capabilities.inlineButtons",
+    "value": "dm"
+  },
+  {
+    "path": "channels.telegram.actions.sendMessage",
+    "value": true
+  },
+  {
+    "path": "channels.telegram.linkPreview",
+    "value": false
+  },
+  {
+    "path": "channels.telegram.streaming.mode",
+    "value": "progress"
+  },
+  {
+    "path": "channels.telegram.streaming.progress.commentary",
+    "value": false
   }
 ]
