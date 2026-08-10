@@ -43,17 +43,26 @@ function reply(text, buttons) {
   };
 }
 
-function termUrl(payload) {
+function termCommand(payload) {
   if (!/^[A-Za-z0-9_-]+$/.test(payload)) {
     throw new Error(`Unsafe Telegram start payload: ${payload}`);
   }
 
-  return `https://t.me/${UI_CONFIG.botUsername}?start=term_${payload}`;
+  return `/start term_${payload}`;
 }
 
 function termButton(term) {
-  return urlButton(term.label, termUrl(term.payload));
+  // OpenClaw's Telegram presentation schema reliably executes command
+  // actions. URL actions are silently omitted by some runtime versions,
+  // which previously left /knowledge with only the navigation buttons.
+  return commandButton(term.label, termCommand(term.payload));
 }
+
+const KNOWLEDGE_TERM_COUNT = new Set(
+  UI_CONFIG.categories
+    .filter((category) => category.id !== "popular")
+    .flatMap((category) => category.terms.map((term) => term.payload)),
+).size;
 
 function homeButtons() {
   return [
@@ -110,8 +119,9 @@ export function renderKnowledge(categoryId = "") {
       [
         "📚 **База знаний**",
         "",
-        "Выберите понятный раздел — не нужно листать длинный список.",
-        "Внутри нажмите на термин, и я сразу его объясню.",
+        `Здесь ${KNOWLEDGE_TERM_COUNT} коротких объяснений по ИИ, моделям и финансам.`,
+        "",
+        "Выберите раздел, затем нажмите на нужный термин.",
       ].join("\n"),
       [
         ...UI_CONFIG.categories.map((item) =>
@@ -127,6 +137,8 @@ export function renderKnowledge(categoryId = "") {
       `**${category.label}**`,
       "",
       category.description,
+      `В разделе: **${category.terms.length}** терминов.`,
+      "",
       "Нажмите на термин — откроется короткое объяснение.",
     ].join("\n"),
     [

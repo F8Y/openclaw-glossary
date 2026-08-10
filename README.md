@@ -6,7 +6,9 @@ Pair of bots:
 
 ## Deploy
 
-Deployed on VDS (Cloud.ru) with TG channel, llm provider is BotHub.
+Deployed on VDS (Cloud.ru) with TG channel. BotHub remains the default LLM
+provider; Cloud.ru Foundation Models is configured as the fallback and as a
+session-scoped test provider.
 
 Изменения едут только через git: PR в `master` → CI → **Promote to deploy**
 в Actions. На сервере systemd-таймер каждые 5 минут приводит состояние
@@ -65,6 +67,28 @@ EOF
 
 Дальше: `oc skills list`, `oc memory status --agent main`,
 `oc pairing list telegram`, `oc config get tools`.
+
+## Переключение LLM-провайдера
+
+Для теста не нужно менять конфиг или перезапускать контейнер. В своём чате
+с ботом отправьте одну команду:
+
+| Команда | Результат |
+|---|---|
+| `/model cloudru` | эта Telegram-сессия использует DeepSeek V4 Flash через Cloud.ru |
+| `/model bothub` | эта Telegram-сессия использует DeepSeek V4 Flash через BotHub |
+| `/model status` | показать активную модель и endpoint |
+| `/model default` | убрать ручной выбор и вернуться к primary из конфига |
+
+Переключение относится только к текущей Telegram-сессии и не меняет GitOps-
+конфиг для остальных пользователей. Если модель выбрана через `/model`, режим
+строгий: при ошибке выбранного провайдера OpenClaw покажет ошибку, а не уйдёт
+в fallback. Это удобно для честного тестирования Cloud.ru.
+
+Минимальная проверка: после `/model cloudru` запросить один термин, затем
+`/digest`, затем термин, которого нет в локальной базе. Оценивать время ответа,
+корректность вызовов `memory_search`/`web_search` и наличие ошибок в логах.
+Вернуться можно одной командой `/model bothub`.
 
 ## Бюджет инструкций
 
