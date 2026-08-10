@@ -1,6 +1,7 @@
 import {
   UI_CALLBACK_NAMESPACE,
   renderScreen,
+  renderTermCard,
   toInteractiveResponse,
 } from "./ui.js";
 
@@ -29,8 +30,19 @@ export const interactiveDefinition = Object.freeze({
     }
 
     if (payload.startsWith("term:")) {
-      const term = payload.slice("term:".length);
+      const parts = payload.slice("term:".length).split(":");
+      const term = parts.pop() ?? "";
+      const category = parts.pop() ?? "";
+
       if (SAFE_TERM.test(term)) {
+        const card = renderTermCard(term, category);
+        if (card) {
+          await context.respond.editMessage(toInteractiveResponse(card));
+          return { handled: true };
+        }
+
+        // Unknown terms keep the old agent/RAG route. This is also a safe
+        // fallback if the knowledge volume is temporarily unavailable.
         return { handled: true, submitText: `/start term_${term}` };
       }
     }

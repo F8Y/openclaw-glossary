@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { formatKnowledgeArticle, getKnowledgeArticle } from "./knowledge.js";
+
 const rawConfig = readFileSync(new URL("./ui-config.json", import.meta.url), "utf8");
 
 export const UI_CONFIG = Object.freeze(JSON.parse(rawConfig));
@@ -41,11 +43,11 @@ function reply(text, buttons) {
   };
 }
 
-function termButton(term) {
+function termButton(term, categoryId) {
   if (!/^[A-Za-z0-9_-]+$/.test(term.payload)) {
     throw new Error(`Unsafe Telegram term payload: ${term.payload}`);
   }
-  return callbackButton(term.label, `term:${term.payload}`);
+  return callbackButton(term.label, `term:${categoryId}:${term.payload}`);
 }
 
 const KNOWLEDGE_TERM_COUNT = new Set(
@@ -61,6 +63,16 @@ function homeButtons() {
     callbackButton("📰 Новости об ИИ", "run:digest"),
     callbackButton("🔎 Источники", "screen:sources"),
   ];
+}
+
+function primaryCategoryId(payload) {
+  return (
+    UI_CONFIG.categories.find(
+      (category) =>
+        category.id !== "popular" &&
+        category.terms.some((term) => term.payload === payload),
+    )?.id ?? "popular"
+  );
 }
 
 export function renderMenu() {
@@ -94,7 +106,7 @@ export function renderExplain() {
       "Или выберите готовый пример 👇",
     ].join("\n"),
     [
-      ...examples.map(termButton),
+      ...examples.map((term) => termButton(term, primaryCategoryId(term.payload))),
       callbackButton("🏠 Главное меню", "screen:menu"),
     ],
   );
@@ -135,11 +147,27 @@ export function renderKnowledge(categoryId = "") {
       `${category.terms.length} карточек — выберите нужную 👇`,
     ].join("\n"),
     [
-      ...category.terms.map(termButton),
+      ...category.terms.map((term) => termButton(term, category.id)),
       callbackButton("← Все разделы", "screen:knowledge"),
       callbackButton("🏠 Главное", "screen:menu"),
     ],
   );
+}
+
+export function renderTermCard(payload, categoryId = "") {
+  const article = getKnowledgeArticle(payload);
+  if (!article) {
+    return undefined;
+  }
+
+  const backCategory = CATEGORY_BY_ID.has(categoryId)
+    ? categoryId
+    : primaryCategoryId(payload);
+
+  return reply(formatKnowledgeArticle(article), [
+    callbackButton("← К разделу", `screen:knowledge:${backCategory}`),
+    callbackButton("🏠 Главное", "screen:menu"),
+  ]);
 }
 
 export function renderSources() {

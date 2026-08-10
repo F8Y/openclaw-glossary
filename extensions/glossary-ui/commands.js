@@ -37,9 +37,9 @@ export const commandDefinitions = Object.freeze([
     handler: () => renderScreen("sources"),
   },
   {
-    // No-argument /start becomes instant. Term callbacks submit commands such
-    // as /start term_ROE; those carry args, do not match this definition,
-    // and continue through the existing agent/skill route.
+    // No-argument /start becomes instant. Known term buttons are handled by
+    // the interactive callback without invoking the agent. Manually entered
+    // /start arguments still continue through the existing agent/skill route.
     name: "start",
     description: "Открыть Glossaryck",
     acceptsArgs: false,

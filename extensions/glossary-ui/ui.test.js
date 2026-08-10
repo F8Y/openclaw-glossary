@@ -10,7 +10,9 @@ import {
   renderKnowledge,
   renderMenu,
   renderSources,
+  renderTermCard,
 } from "./ui.js";
+import { getKnowledgeArticle } from "./knowledge.js";
 
 function rowsOf(reply) {
   return reply.channelData.telegram.buttons;
@@ -63,8 +65,25 @@ test("term buttons submit safe term callbacks", () => {
 
     assert.deepEqual(
       termButtons.map((button) => button.callback_data),
-      category.terms.map((term) => `${UI_CALLBACK_NAMESPACE}:term:${term.payload}`),
+      category.terms.map(
+        (term) => `${UI_CALLBACK_NAMESPACE}:term:${category.id}:${term.payload}`,
+      ),
     );
+  }
+});
+
+test("every configured term resolves to a local knowledge article", () => {
+  for (const category of UI_CONFIG.categories) {
+    for (const term of category.terms) {
+      const article = getKnowledgeArticle(term.payload);
+      assert.ok(article, `missing local article for ${term.payload}`);
+
+      const card = renderTermCard(term.payload, category.id);
+      assertValidReply(card);
+      assert.match(card.text, /^📗 /);
+      assert.match(card.text, /📚 База знаний Glossaryck$/);
+      assert.doesNotMatch(card.text, /memory\/knowledge|\.md$/m);
+    }
   }
 });
 
@@ -105,7 +124,7 @@ test("command and interaction registration is deterministic", () => {
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
 });
 
-test("callbacks edit navigation in place and submit dynamic actions", async () => {
+test("callbacks edit navigation and known cards in place", async () => {
   const edits = [];
   const replies = [];
   const context = {
@@ -123,10 +142,15 @@ test("callbacks edit navigation in place and submit dynamic actions", async () =
   assert.ok(edits[0].buttons.length > 1);
 
   context.callback.payload = "term:RAG";
-  assert.deepEqual(await interactiveDefinition.handler(context), {
-    handled: true,
-    submitText: "/start term_RAG",
-  });
+  assert.deepEqual(await interactiveDefinition.handler(context), { handled: true });
+  assert.equal(edits.length, 2);
+  assert.match(edits[1].text, /^📗 RAG — Retrieval-Augmented Generation/);
+  assert.doesNotMatch(edits[1].text, /memory\/knowledge|\.md$/m);
+
+  context.callback.payload = "term:finance:ROE";
+  assert.deepEqual(await interactiveDefinition.handler(context), { handled: true });
+  assert.equal(edits.length, 3);
+  assert.match(edits[2].text, /📐 ROE = Чистая прибыль \/ Собственный капитал/);
 
   context.callback.payload = "run:digest";
   assert.deepEqual(await interactiveDefinition.handler(context), {
@@ -134,6 +158,22 @@ test("callbacks edit navigation in place and submit dynamic actions", async () =
     submitText: "/digest",
   });
   assert.equal(replies.length, 0);
+});
+
+test("unknown terms safely fall back to the agent route", async () => {
+  const context = {
+    auth: { isAuthorizedSender: true },
+    callback: { payload: "term:ai:NewTerm" },
+    respond: {
+      editMessage: async () => assert.fail("unknown term must not edit a card"),
+      reply: async () => assert.fail("unknown term must use the agent route"),
+    },
+  };
+
+  assert.deepEqual(await interactiveDefinition.handler(context), {
+    handled: true,
+    submitText: "/start term_NewTerm",
+  });
 });
 
 test("unknown knowledge section safely returns the catalog", () => {
