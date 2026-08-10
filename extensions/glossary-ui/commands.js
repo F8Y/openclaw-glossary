@@ -37,7 +37,7 @@ export const commandDefinitions = Object.freeze([
     handler: () => renderScreen("sources"),
   },
   {
-    // No-argument /start becomes instant. Term buttons send commands such
+    // No-argument /start becomes instant. Term callbacks submit commands such
     // as /start term_ROE; those carry args, do not match this definition,
     // and continue through the existing agent/skill route.
     name: "start",

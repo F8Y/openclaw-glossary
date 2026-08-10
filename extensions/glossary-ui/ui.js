@@ -3,59 +3,49 @@ import { readFileSync } from "node:fs";
 const rawConfig = readFileSync(new URL("./ui-config.json", import.meta.url), "utf8");
 
 export const UI_CONFIG = Object.freeze(JSON.parse(rawConfig));
+export const UI_CALLBACK_NAMESPACE = "glossary";
 
 const CATEGORY_BY_ID = new Map(
   UI_CONFIG.categories.map((category) => [category.id, category]),
 );
 
-function commandButton(label, command) {
-  return {
-    label,
-    action: { type: "command", command },
-  };
+function callbackButton(text, payload) {
+  const callbackData = `${UI_CALLBACK_NAMESPACE}:${payload}`;
+  if (Buffer.byteLength(callbackData, "utf8") > 64) {
+    throw new Error(`Telegram callback is longer than 64 bytes: ${callbackData}`);
+  }
+  return { text, callback_data: callbackData };
 }
 
-function urlButton(label, url) {
-  return {
-    label,
-    action: { type: "url", url },
-  };
+function urlButton(text, url) {
+  return { text, url };
 }
 
 function rows(buttons, size = 2) {
-  const blocks = [];
+  const result = [];
   for (let index = 0; index < buttons.length; index += size) {
-    blocks.push({
-      type: "buttons",
-      buttons: buttons.slice(index, index + size),
-    });
+    result.push(buttons.slice(index, index + size));
   }
-  return blocks;
+  return result;
 }
 
 function reply(text, buttons) {
+  // Telegram is the only channel for this bot. Provider-native buttons avoid
+  // OpenClaw's shared presentation fallback, which otherwise repeats every
+  // button and its slash command inside the message body.
   return {
     text,
-    presentation: {
-      tone: "info",
-      blocks: rows(buttons),
+    channelData: {
+      telegram: { buttons: rows(buttons) },
     },
   };
 }
 
-function termCommand(payload) {
-  if (!/^[A-Za-z0-9_-]+$/.test(payload)) {
-    throw new Error(`Unsafe Telegram start payload: ${payload}`);
-  }
-
-  return `/start term_${payload}`;
-}
-
 function termButton(term) {
-  // OpenClaw's Telegram presentation schema reliably executes command
-  // actions. URL actions are silently omitted by some runtime versions,
-  // which previously left /knowledge with only the navigation buttons.
-  return commandButton(term.label, termCommand(term.payload));
+  if (!/^[A-Za-z0-9_-]+$/.test(term.payload)) {
+    throw new Error(`Unsafe Telegram term payload: ${term.payload}`);
+  }
+  return callbackButton(term.label, `term:${term.payload}`);
 }
 
 const KNOWLEDGE_TERM_COUNT = new Set(
@@ -66,21 +56,21 @@ const KNOWLEDGE_TERM_COUNT = new Set(
 
 function homeButtons() {
   return [
-    commandButton("📗 Объяснить термин", "/explain"),
-    commandButton("📚 База знаний", "/knowledge"),
-    commandButton("📰 Новости об ИИ", "/digest"),
-    commandButton("🔎 Источники", "/sources"),
+    callbackButton("📗 Объяснить термин", "screen:explain"),
+    callbackButton("📚 База знаний", "screen:knowledge"),
+    callbackButton("📰 Новости об ИИ", "run:digest"),
+    callbackButton("🔎 Источники", "screen:sources"),
   ];
 }
 
 export function renderMenu() {
   return reply(
     [
-      "📗 **Glossaryck**",
+      "📗 Glossaryck",
       "",
-      "Объясняю термины из **ИИ** и **финансов** простым языком.",
+      "Понятный справочник по ИИ и финансам.",
       "",
-      "Выберите действие ниже или просто напишите термин — например `ROE`, `RAG` или `EBITDA`.",
+      "Выберите действие или просто напишите термин — например ROE, RAG или EBITDA.",
     ].join("\n"),
     homeButtons(),
   );
@@ -96,16 +86,16 @@ export function renderExplain() {
 
   return reply(
     [
-      "📗 **Какой термин объяснить?**",
+      "📗 Объяснить термин",
       "",
       "Напишите слово или сокращение одним сообщением.",
-      "Например: `что такое EBITDA`.",
+      "Например: что такое EBITDA?",
       "",
-      "Или выберите готовый пример:",
+      "Или выберите готовый пример 👇",
     ].join("\n"),
     [
       ...examples.map(termButton),
-      commandButton("🏠 Главное меню", "/menu"),
+      callbackButton("🏠 Главное меню", "screen:menu"),
     ],
   );
 }
@@ -117,34 +107,37 @@ export function renderKnowledge(categoryId = "") {
   if (!category) {
     return reply(
       [
-        "📚 **База знаний**",
+        "📚 База знаний",
         "",
-        `Здесь ${KNOWLEDGE_TERM_COUNT} коротких объяснений по ИИ, моделям и финансам.`,
+        `${KNOWLEDGE_TERM_COUNT} коротких карточек — без учебников и воды.`,
         "",
-        "Выберите раздел, затем нажмите на нужный термин.",
+        "🔥 База для быстрого старта",
+        "🤖 Как модели учатся, отвечают и ищут",
+        "💰 Метрики бизнеса и стоимость капитала",
+        "🧠 Кто делает популярные модели",
+        "",
+        "Выберите раздел 👇",
       ].join("\n"),
       [
         ...UI_CONFIG.categories.map((item) =>
-          commandButton(item.buttonLabel ?? item.label, `/knowledge ${item.id}`),
+          callbackButton(item.buttonLabel ?? item.label, `screen:knowledge:${item.id}`),
         ),
-        commandButton("🏠 Главное меню", "/menu"),
+        callbackButton("🏠 Главное меню", "screen:menu"),
       ],
     );
   }
 
   return reply(
     [
-      `**${category.label}**`,
+      category.label,
       "",
       category.description,
-      `В разделе: **${category.terms.length}** терминов.`,
-      "",
-      "Нажмите на термин — откроется короткое объяснение.",
+      `${category.terms.length} карточек — выберите нужную 👇`,
     ].join("\n"),
     [
       ...category.terms.map(termButton),
-      commandButton("← Все разделы", "/knowledge"),
-      commandButton("🏠 Главное", "/menu"),
+      callbackButton("← Все разделы", "screen:knowledge"),
+      callbackButton("🏠 Главное", "screen:menu"),
     ],
   );
 }
@@ -152,18 +145,18 @@ export function renderKnowledge(categoryId = "") {
 export function renderSources() {
   return reply(
     [
-      "🔎 **Проверенные источники**",
+      "🔎 Проверенные источники",
       "",
-      "📗 **Термины** — наш проверенный глоссарий.",
-      "🤖 **ИИ** — Google ML, Google Cloud и NIST.",
-      "💰 **Финансы** — Банк России, IFRS и BIS.",
-      "📰 **Новости** — официальные блоги разработчиков; сравнения отдельно сверяю по независимым измерениям.",
+      "📗 Термины — локальный проверенный глоссарий",
+      "🤖 ИИ — Google ML, Google Cloud и NIST",
+      "💰 Финансы — Банк России, IFRS и BIS",
+      "📰 Новости — официальные блоги и независимые измерения",
       "",
-      "Для конкретного ответа всегда можно попросить ссылку на первоисточник.",
+      "Нажмите, чтобы открыть первоисточник 👇",
     ].join("\n"),
     [
       ...UI_CONFIG.sources.map((source) => urlButton(source.label, source.url)),
-      commandButton("🏠 Главное меню", "/menu"),
+      callbackButton("🏠 Главное меню", "screen:menu"),
     ],
   );
 }
@@ -182,4 +175,11 @@ export function renderScreen(screen, args = "") {
     default:
       return renderMenu();
   }
+}
+
+export function toInteractiveResponse(rendered) {
+  return {
+    text: rendered.text,
+    buttons: rendered.channelData.telegram.buttons,
+  };
 }

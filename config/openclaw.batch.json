@@ -163,6 +163,10 @@
     "value": 5
   },
   {
+    "path": "tools.web.search.cacheTtlMinutes",
+    "value": 60
+  },
+  {
     "path": "tools.web.fetch.enabled",
     "value": true
   },
@@ -244,6 +248,44 @@
   {
     "path": "channels.telegram.streaming.progress.commentary",
     "value": false
+  },
+  {
+    "path": "channels.telegram.streaming.progress.toolProgress",
+    "value": false
+  },
+  {
+    "path": "channels.telegram.streaming.progress.label",
+    "value": "auto"
+  },
+  {
+    "path": "channels.telegram.streaming.progress.labels",
+    "value": [
+      "🦞 Lobstering…",
+      "🤖 Beboopping…",
+      "🔎 Ищу и проверяю…",
+      "🧠 Собираю главное…",
+      "📚 Листаю базу знаний…"
+    ]
+  },
+  {
+    "path": "agents.defaults.reasoningDefault",
+    "value": "off"
+  },
+  {
+    "path": "agents.defaults.verboseDefault",
+    "value": "off"
+  },
+  {
+    "path": "channels.telegram.ackReaction",
+    "value": "👀"
+  },
+  {
+    "path": "messages.ackReactionScope",
+    "value": "direct"
+  },
+  {
+    "path": "messages.removeAckAfterReply",
+    "value": true
   },
   {
     "path": "models.providers.custom-bothub-chat.timeoutSeconds",

@@ -173,6 +173,10 @@ jobs:
               and .value == "duckduckgo"
             )
             and any(.[];
+              .path == "tools.web.search.cacheTtlMinutes"
+              and .value >= 15
+            )
+            and any(.[];
               .path == "tools.alsoAllow"
               and (.value | index("web_search") != null)
               and (.value | index("web_fetch") != null)
@@ -194,6 +198,18 @@ jobs:
             and any(.[];
               .path == "tools.codeMode"
               and .value == false
+            )
+            and any(.[];
+              .path == "channels.telegram.streaming.progress.toolProgress"
+              and .value == false
+            )
+            and any(.[];
+              .path == "agents.defaults.reasoningDefault"
+              and .value == "off"
+            )
+            and any(.[];
+              .path == "agents.defaults.verboseDefault"
+              and .value == "off"
             )
           ' config/openclaw.batch.json
 
