@@ -16,11 +16,13 @@
       "description": "Термины, с которых проще всего начать.",
       "terms": [
         { "label": "RAG", "payload": "RAG" },
+        { "label": "LLM", "payload": "LLM" },
         { "label": "Токен", "payload": "token" },
         { "label": "Инференс", "payload": "inference" },
         { "label": "ROE", "payload": "ROE" },
         { "label": "EBITDA", "payload": "EBITDA" },
         { "label": "WACC", "payload": "WACC" },
+        { "label": "FCF", "payload": "FCF" },
         { "label": "GPT", "payload": "GPT" },
         { "label": "Gemini", "payload": "Gemini" }
       ]
@@ -32,6 +34,7 @@
       "description": "Как модели учатся, отвечают и ищут информацию.",
       "terms": [
         { "label": "RAG", "payload": "RAG" },
+        { "label": "LLM", "payload": "LLM" },
         { "label": "Инференс", "payload": "inference" },
         { "label": "Токен", "payload": "token" },
         { "label": "Контекстное окно", "payload": "context" },

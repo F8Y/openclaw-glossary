@@ -95,6 +95,32 @@ jobs:
           fi
           echo "дублей нет, путей: $(jq length config/openclaw.batch.json)"
 
+      - name: LLM-провайдеры и короткие алиасы
+        run: |
+          set -euo pipefail
+          jq -e '
+            any(.[];
+              .path == "models.providers.cloudru.baseUrl"
+              and .value == "https://foundation-models.api.cloud.ru/v1"
+            )
+            and any(.[];
+              .path == "models.providers.cloudru.models"
+              and any(.value[];
+                .id == "deepseek-ai/DeepSeek-V4-Flash"
+                and .compat.supportsTools == true
+              )
+            )
+            and any(.[];
+              .path == "agents.defaults.model.fallbacks"
+              and (.value | index("cloudru/deepseek-ai/DeepSeek-V4-Flash") != null)
+            )
+            and any(.[];
+              .path == "agents.defaults.models"
+              and .value["custom-bothub-chat/deepseek-v4-flash"].alias == "bothub"
+              and .value["cloudru/deepseek-ai/DeepSeek-V4-Flash"].alias == "cloudru"
+            )
+          ' config/openclaw.batch.json
+
       - name: Telegram UI plugin
         run: |
           set -euo pipefail

@@ -53,18 +53,18 @@ test("every screen is a compact Telegram presentation", () => {
   }
 });
 
-test("term buttons are safe Telegram deep links", () => {
+test("term buttons use executable Telegram commands", () => {
   for (const category of UI_CONFIG.categories) {
-    for (const button of buttonsOf(renderKnowledge(category.id))) {
-      if (button.action.type !== "url") {
-        continue;
-      }
+    const buttons = buttonsOf(renderKnowledge(category.id));
+    const termButtons = buttons.slice(0, category.terms.length);
 
-      const url = new URL(button.action.url);
-      assert.equal(url.hostname, "t.me");
-      assert.equal(url.pathname, `/${UI_CONFIG.botUsername}`);
-      assert.match(url.searchParams.get("start"), /^term_[A-Za-z0-9_-]+$/);
-    }
+    assert.deepEqual(
+      termButtons.map((button) => button.action),
+      category.terms.map((term) => ({
+        type: "command",
+        command: `/start term_${term.payload}`,
+      })),
+    );
   }
 });
 

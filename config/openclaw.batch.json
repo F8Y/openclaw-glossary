@@ -307,11 +307,11 @@
       {
         "id": "deepseek-ai/DeepSeek-V4-Flash",
         "name": "DeepSeek V4 Flash (Cloud.ru)",
-        "reasoning": false,
+        "reasoning": true,
         "input": [
           "text"
         ],
-        "contextWindow": 128000,
+        "contextWindow": 1048576,
         "maxTokens": 8192,
         "compat": {
           "supportsTools": true,
@@ -325,5 +325,16 @@
     "value": [
       "cloudru/deepseek-ai/DeepSeek-V4-Flash"
     ]
+  },
+  {
+    "path": "agents.defaults.models",
+    "value": {
+      "custom-bothub-chat/deepseek-v4-flash": {
+        "alias": "bothub"
+      },
+      "cloudru/deepseek-ai/DeepSeek-V4-Flash": {
+        "alias": "cloudru"
+      }
+    }
   }
 ]

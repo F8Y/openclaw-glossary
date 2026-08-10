@@ -37,9 +37,9 @@ export const commandDefinitions = Object.freeze([
     handler: () => renderScreen("sources"),
   },
   {
-    // No-argument /start becomes instant. Deep links such as
-    // /start term_ROE carry args, do not match this definition and
-    // continue through the existing agent/skill route.
+    // No-argument /start becomes instant. Term buttons send commands such
+    // as /start term_ROE; those carry args, do not match this definition,
+    // and continue through the existing agent/skill route.
     name: "start",
     description: "Открыть Glossaryck",
     acceptsArgs: false,
