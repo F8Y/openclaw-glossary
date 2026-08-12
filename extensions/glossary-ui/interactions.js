@@ -49,6 +49,8 @@ export function resolveKnownTermInput(input) {
 }
 
 export const interactiveDefinition = Object.freeze({
+  name: "glossary-ui-callbacks",
+  description: "Handle Glossaryck Telegram inline keyboard callbacks",
   channel: "telegram",
   namespace: UI_CALLBACK_NAMESPACE,
   async handler(context) {
