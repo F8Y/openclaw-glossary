@@ -129,7 +129,7 @@ test("command and interaction registration is deterministic", () => {
   registerCommands({ registerCommand: (definition) => commands.push(definition.name) });
   registerInteractions({
     registerInteractiveHandler: (definition) => interactions.push(definition),
-    registerHook: (name, handler) => hooks.push({ name, handler }),
+    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
   });
 
   assert.deepEqual(commands, UI_CONFIG.commands);
@@ -139,6 +139,8 @@ test("command and interaction registration is deterministic", () => {
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
   assert.equal(hooks.length, 1);
   assert.equal(hooks[0].name, "before_dispatch");
+  assert.equal(hooks[0].options.name, "glossary-known-term-router");
+  assert.match(hooks[0].options.description, /known Telegram glossary terms/i);
 });
 
 test("about is distinct from the home menu", () => {
@@ -170,7 +172,7 @@ test("known Telegram terms are answered before model dispatch", async () => {
   const hooks = [];
   registerInteractions({
     registerInteractiveHandler: () => {},
-    registerHook: (name, handler) => hooks.push({ name, handler }),
+    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
   });
 
   const handler = hooks.find(({ name }) => name === "before_dispatch")?.handler;

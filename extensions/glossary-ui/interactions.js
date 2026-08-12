@@ -99,14 +99,21 @@ export function registerInteractions(api) {
 
   // Known terms bypass the model for both button clicks and ordinary text.
   // This keeps one renderer and one visual format regardless of entry point.
-  api.registerHook("before_dispatch", (event) => {
-    if (event.channel !== "telegram" || event.isGroup) {
-      return undefined;
-    }
+  api.registerHook(
+    "before_dispatch",
+    (event) => {
+      if (event.channel !== "telegram" || event.isGroup) {
+        return undefined;
+      }
 
-    const article = resolveKnownTermInput(event.body ?? event.content);
-    return article
-      ? { handled: true, text: formatKnowledgeArticle(article) }
-      : undefined;
-  });
+      const article = resolveKnownTermInput(event.body ?? event.content);
+      return article
+        ? { handled: true, text: formatKnowledgeArticle(article) }
+        : undefined;
+    },
+    {
+      name: "glossary-known-term-router",
+      description: "Answer known Telegram glossary terms without an LLM round-trip",
+    },
+  );
 }
