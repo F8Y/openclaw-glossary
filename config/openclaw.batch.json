@@ -207,6 +207,10 @@
         "description": "Каталог терминов и моделей"
       },
       {
+        "command": "analyze",
+        "description": "Разбор модели или релиза"
+      },
+      {
         "command": "digest",
         "description": "Дайджест новостей об ИИ"
       },
@@ -223,7 +227,8 @@
       "term",
       "digest",
       "sources",
-      "knowledge"
+      "knowledge",
+      "analyze"
     ]
   },
   {
@@ -370,7 +375,7 @@
   {
     "path": "agents.defaults.model.fallbacks",
     "value": [
-      "cloudru/deepseek-ai/DeepSeek-V4-Flash"
+      "custom-bothub-chat/deepseek-v4-flash"
     ]
   },
   {
@@ -383,5 +388,9 @@
         "alias": "cloudru"
       }
     }
+  },
+  {
+    "path": "agents.defaults.model.primary",
+    "value": "cloudru/deepseek-ai/DeepSeek-V4-Flash"
   }
 ]
