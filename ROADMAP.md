@@ -149,9 +149,19 @@ GitOps-контур не зависит от рантайма: реконсил�
 не будет. Реконсиляция восстанавливает инфраструктуру, но не pairing,
 auth-профили и индекс памяти. Нужен systemd-таймер раз в сутки.
 
-**Резервный поиск.** Основной `web_search` переведён с HTML-выдачи DuckDuckGo
-на Tavily API. Если Tavily исчерпает месячную квоту или станет недоступен,
-нужен второй API-провайдер либо предсобранный дайджест по расписанию.
+**Поиск держится на HTML-выдаче DuckDuckGo.** Плагин `tavily-provider`
+написан, протестирован и включён, но недостижим: AWS ELB отдаёт `403`
+на запросы с российского IP — блокировка на периметре, до API, ключ тут
+ни при чём. Переключение обратно — одно значение `tools.web.search.provider`,
+если появится маршрут до Tavily.
+
+Настоящее решение — `yandex-search-provider` по образцу `tavily-provider`.
+Поверхность SDK теперь известна: `api.registerWebSearchProvider(...)` плюс
+`createWebSearchProviderContractFields({credentialPath, searchCredential,
+configuredCredential, selectionPluginId})`. Заменить нужно только HTTP-клиент
+и нормализацию результата в `title + url + snippet + date`. Yandex Search API
+оплачивается в рублях и не блокируется по географии — это снимает
+и капчу DuckDuckGo, и стену Tavily разом.
 
 **Дайджест по расписанию.** Cron собирает новости раз в сутки в Markdown,
 бот отвечает из индекса. Снимает разом латентность и капчу.

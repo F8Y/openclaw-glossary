@@ -200,10 +200,14 @@ jobs:
           for f in "$PLUGIN"/*.js; do node --check "$f"; done
           node --test "$PLUGIN"/*.test.js
 
+          # Tavily остаётся в репозитории как готовый провайдер, но
+          # недостижим с российского IP: AWS ELB отдаёт 403 до самого API.
+          # Основной поиск — DuckDuckGo. Оба плагина включены, чтобы
+          # переключение делалось одним значением provider.
           jq -e '
             any(.[];
               .path == "plugins.entries.duckduckgo.enabled"
-              and .value == false
+              and .value == true
             )
             and any(.[];
               .path == "plugins.entries.tavily.enabled"
@@ -219,7 +223,7 @@ jobs:
             )
             and any(.[];
               .path == "tools.web.search.provider"
-              and .value == "tavily"
+              and (.value == "duckduckgo" or .value == "tavily")
             )
             and any(.[];
               .path == "tools.web.search.cacheTtlMinutes"

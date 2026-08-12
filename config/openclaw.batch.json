@@ -106,7 +106,7 @@
   },
   {
     "path": "plugins.entries.duckduckgo.enabled",
-    "value": false
+    "value": true
   },
   {
     "path": "plugins.load.paths",
@@ -161,7 +161,7 @@
   },
   {
     "path": "tools.web.search.provider",
-    "value": "tavily"
+    "value": "duckduckgo"
   },
   {
     "path": "tools.web.search.maxResults",
