@@ -124,41 +124,25 @@ test("plugin command inventory matches ui-config", () => {
   assert.ok(commandDefinitions.every((definition) => definition.requireAuth === true));
 });
 
-test("interaction and static UI routing registration is deterministic", () => {
+test("interaction and static UI routing use their native SDK registrations", () => {
   const interactions = [];
-  const hooks = [];
-  const registrationNames = new Set();
+  const typedHooks = [];
   registerInteractions({
     registerInteractiveHandler: (definition) => {
-      assert.equal(
-        typeof definition.name,
-        "string",
-        "interactive handler registration requires a name",
-      );
-      assert.ok(definition.name.trim(), "interactive handler name must not be empty");
-      assert.equal(registrationNames.has(definition.name), false);
-      registrationNames.add(definition.name);
       interactions.push(definition);
     },
-    registerHook: (name, handler, options) => {
-      assert.equal(typeof options?.name, "string", "hook registration requires a name");
-      assert.ok(options.name.trim(), "hook name must not be empty");
-      assert.equal(registrationNames.has(options.name), false);
-      registrationNames.add(options.name);
-      hooks.push({ name, handler, options });
-    },
+    on: (name, handler, options) => typedHooks.push({ name, handler, options }),
+    registerHook: () => assert.fail("reply_dispatch must use the typed api.on surface"),
   });
 
   assert.equal(interactions.length, 1);
   assert.equal(interactions[0], interactiveDefinition);
-  assert.equal(interactions[0].name, "glossary-ui-callbacks");
-  assert.match(interactions[0].description, /Telegram inline keyboard callbacks/i);
   assert.equal(interactions[0].channel, "telegram");
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
-  assert.equal(hooks.length, 1);
-  assert.deepEqual(hooks.map((hook) => hook.name), ["reply_dispatch"]);
-  assert.equal(hooks[0].options.name, "glossary-static-ui-router");
-  assert.match(hooks[0].options.description, /before model dispatch/i);
+  assert.equal(typeof interactions[0].handler, "function");
+  assert.deepEqual(typedHooks.map((hook) => hook.name), ["reply_dispatch"]);
+  assert.equal(typeof typedHooks[0].handler, "function");
+  assert.equal(typedHooks[0].options, undefined);
 });
 
 test("static slash commands render without plugin command ownership", () => {
@@ -175,13 +159,13 @@ test("static slash commands render without plugin command ownership", () => {
 });
 
 test("static Telegram commands short-circuit the model with native buttons", () => {
-  const hooks = [];
+  const typedHooks = [];
   registerInteractions({
     registerInteractiveHandler: () => {},
-    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
+    on: (name, handler, options) => typedHooks.push({ name, handler, options }),
   });
 
-  const staticRouter = hooks.find((hook) => hook.name === "reply_dispatch");
+  const staticRouter = typedHooks.find((hook) => hook.name === "reply_dispatch");
   const sent = [];
   const processed = [];
   const idle = [];
@@ -271,13 +255,13 @@ test("screen callback parser preserves the complete argument tail", () => {
 });
 
 test("known Telegram terms are answered before model dispatch", () => {
-  const hooks = [];
+  const typedHooks = [];
   registerInteractions({
     registerInteractiveHandler: () => {},
-    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
+    on: (name, handler, options) => typedHooks.push({ name, handler, options }),
   });
 
-  const handler = hooks.find(({ name }) => name === "reply_dispatch")?.handler;
+  const handler = typedHooks.find(({ name }) => name === "reply_dispatch")?.handler;
   assert.equal(typeof handler, "function");
 
   const sent = [];

@@ -193,6 +193,16 @@ jobs:
             exit 1
           fi
 
+          # reply_dispatch — типизированный SDK hook с сигнатурой
+          # (event, context). Legacy registerHook передаёт один envelope и
+          # оставляет context undefined, из-за чего статический UI теряется.
+          grep -Fq 'api.on(' "$PLUGIN/interactions.js"
+          grep -Fq '"reply_dispatch"' "$PLUGIN/interactions.js"
+          if grep -Fq 'api.registerHook(' "$PLUGIN/interactions.js"; then
+            echo "::error::reply_dispatch должен регистрироваться через api.on, не registerHook"
+            exit 1
+          fi
+
           jq -e '
             any(.[];
               .path == "plugins.entries.glossary-ui.enabled"

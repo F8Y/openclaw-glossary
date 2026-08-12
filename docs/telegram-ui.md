@@ -5,7 +5,9 @@
 Статические экраны больше не генерируются моделью. Локальный плагин
 `glossary-ui` перехватывает их на `reply_dispatch` — до раскрытия
 workspace-скилла и до LLM — и сразу возвращает обычный текст с нативной
-inline-клавиатурой Telegram.
+inline-клавиатурой Telegram. Router регистрируется типизированным SDK-вызовом
+`api.on("reply_dispatch", ...)`: legacy `api.registerHook(...)` использует
+другую сигнатуру обработчика и для этого маршрута не подходит.
 
 Плагин обрабатывает:
 
@@ -58,14 +60,21 @@ ${OPENCLAW_STATE_DIR}/config/extensions/glossary-ui
 
 ## Проверка после выкладки
 
-Проверить, что runtime увидел команды:
+Проверить, что runtime увидел именно типизированный router:
 
 ```bash
 sudo docker compose \
   --env-file /run/openclaw/env \
   -f /opt/openclaw-glossary/docker-compose.yml \
-  run --rm cli plugins inspect glossary-ui --runtime --json
+  exec -T gateway openclaw plugins inspect glossary-ui --runtime --json |
+  jq '{status: .plugin.status, hookCount: .plugin.hookCount,
+       typedHooks: .typedHooks, customHooks: .customHooks}'
 ```
+
+Ожидается `status: "loaded"`, `hookCount: 1` и `reply_dispatch` в
+`typedHooks`. В `customHooks` его быть не должно. Команда `openclaw hooks list`
+показывает legacy/internal hooks, поэтому отсутствие там старого
+`glossary-static-ui-router` после этой правки нормально.
 
 Затем проверить в Telegram:
 
