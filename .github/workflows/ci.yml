@@ -145,6 +145,7 @@ jobs:
           jq -e '
             .botUsername == "glossary_ai_bot"
             and (.commands | index("menu") != null)
+            and (.commands | index("term") != null)
             and (.commands | index("knowledge") != null)
             and (.commands | index("sources") != null)
             and (.categories | length >= 4)
@@ -202,16 +203,20 @@ jobs:
 
           # Tavily остаётся в репозитории как готовый провайдер, но
           # недостижим с российского IP: AWS ELB отдаёт 403 до самого API.
-          # Основной поиск — DuckDuckGo. Оба плагина включены, чтобы
-          # переключение делалось одним значением provider.
+          # В рантайме активен только явно выбранный DuckDuckGo.
           jq -e '
             any(.[];
               .path == "plugins.entries.duckduckgo.enabled"
               and .value == true
             )
             and any(.[];
+              .path == "plugins.entries.duckduckgo.config"
+              and .value.webSearch.region == "us-en"
+              and .value.webSearch.safeSearch == "moderate"
+            )
+            and any(.[];
               .path == "plugins.entries.tavily.enabled"
-              and .value == true
+              and .value == false
             )
             and any(.[];
               .path == "plugins.load.paths"
@@ -223,18 +228,28 @@ jobs:
             )
             and any(.[];
               .path == "tools.web.search.provider"
-              and (.value == "duckduckgo" or .value == "tavily")
+              and .value == "duckduckgo"
             )
             and any(.[];
               .path == "tools.web.search.cacheTtlMinutes"
               and .value >= 15
             )
             and any(.[];
-              .path == "tools.alsoAllow"
-              and (.value | index("web_search") != null)
-              and (.value | index("web_fetch") != null)
-              and (.value | index("memory_search") != null)
-              and (.value | index("read") != null)
+              .path == "tools.profile"
+              and .value == "full"
+            )
+            and any(.[];
+              .path == "tools.allow"
+              and (.value | sort) == ([
+                "memory_search",
+                "memory_get",
+                "read",
+                "web_search",
+                "web_fetch",
+                "message",
+                "cron",
+                "session_status"
+              ] | sort)
             )
             and any(.[];
               .path == "tools.deny"
@@ -242,8 +257,12 @@ jobs:
               and (.value | index("edit") != null)
               and (.value | index("apply_patch") != null)
             )
+            and any(.[];
+              .path == "tools.fs.workspaceOnly"
+              and .value == true
+            )
             and all(.[];
-              .path != "tools.fs.workspaceOnly"
+              .path != "tools.alsoAllow"
             )
             and any(.[];
               .path == "agents.defaults.skills"
@@ -270,6 +289,9 @@ jobs:
               and .value == "off"
             )
           ' config/openclaw.batch.json
+
+          grep -Eq '^[[:space:]]*tools\.alsoAllow[[:space:]]*$' \
+            config/openclaw.unset.txt
 
       - name: Реестр внешних источников подключён
         run: |
@@ -308,8 +330,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Пункт меню обязан иметь обработчик: либо workspace-скилл,
-          # либо детерминированную команду UI-плагина.
+          # Статические команды обязан забирать UI-плагин до модели.
+          # Из видимого меню только /digest и /analyze имеют право идти
+          # в workspace-скилл и запускать LLM.
           MENU=$(jq -r '.[] | select(.path=="channels.telegram.customCommands")
                         | .value[].command' config/openclaw.batch.json)
           ALLOW=$(jq -r '.[] | select(.path=="agents.defaults.skills") | .value[]' \
@@ -317,11 +340,18 @@ jobs:
           PLUGIN_COMMANDS=$(jq -r '.commands[]' extensions/glossary-ui/ui-config.json)
 
           for c in $MENU; do
-            if test -f "config/workspace/skills/$c/SKILL.md"; then
+            if echo "$PLUGIN_COMMANDS" | grep -qx "$c"; then
+              : # Детерминированный reply_dispatch, без модели.
+            elif test -f "config/workspace/skills/$c/SKILL.md"; then
+              case "$c" in
+                digest|analyze) ;;
+                *)
+                  echo "::error::/$c обходит UI-плагин и неожиданно запускает LLM"
+                  exit 1
+                  ;;
+              esac
               echo "$ALLOW" | grep -qx "$c" \
                 || { echo "::error::/$c отсутствует в agents.defaults.skills"; exit 1; }
-            elif echo "$PLUGIN_COMMANDS" | grep -qx "$c"; then
-              : # Команда существует и выполняется без модели.
             else
               echo "::error::в меню есть /$c, но нет ни скилла, ни plugin-команды"
               exit 1

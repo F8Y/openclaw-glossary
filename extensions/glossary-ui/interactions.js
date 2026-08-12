@@ -5,7 +5,7 @@ import {
   toInteractiveResponse,
 } from "./ui.js";
 import { resolveUiCommandInput } from "./commands.js";
-import { formatKnowledgeArticle, getKnowledgeArticle } from "./knowledge.js";
+import { getKnowledgeArticle } from "./knowledge.js";
 
 const SAFE_TERM = /^[A-Za-z0-9_-]+$/;
 
@@ -95,49 +95,87 @@ export const interactiveDefinition = Object.freeze({
   },
 });
 
+function normalizeChannel(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+export function isTelegramReplyDispatch(event) {
+  const ctx = event?.ctx ?? {};
+  return [
+    event?.originatingChannel,
+    ctx.OriginatingChannel,
+    ctx.Surface,
+    ctx.Provider,
+  ].some((value) => normalizeChannel(value) === "telegram");
+}
+
+export function resolveReplyDispatchInput(event) {
+  const ctx = event?.ctx ?? {};
+
+  // CommandBody is the clean Telegram message, before OpenClaw rewrites
+  // /knowledge and /sources into skill prompts. The remaining fields keep the
+  // hook useful for ordinary known terms and for older channel adapters.
+  for (const value of [
+    ctx.CommandBody,
+    ctx.BodyForCommands,
+    ctx.RawBody,
+    ctx.BodyForAgent,
+    ctx.Body,
+  ]) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
+function finishDeterministicReply(rendered, context, reason) {
+  const queuedFinal = context.dispatcher.sendFinalReply(rendered);
+  context.recordProcessed(queuedFinal ? "completed" : "skipped", { reason });
+  context.markIdle("message_completed");
+
+  return {
+    handled: true,
+    queuedFinal,
+    counts: context.dispatcher.getQueuedCounts(),
+  };
+}
+
 export function registerInteractions(api) {
   api.registerInteractiveHandler(interactiveDefinition);
 
-  // Static slash commands are advertised through Telegram customCommands,
-  // then intercepted here before the model runs. Keeping menu publication and
-  // command execution separate avoids duplicate Telegram command ownership.
+  // reply_dispatch runs before skill-command expansion and before the model.
+  // before_agent_reply is too late for /knowledge, /sources and /about: by that
+  // point OpenClaw has replaced the slash command with "Use the ... skill".
+  // We deliberately do not register plugin commands: Telegram customCommands
+  // owns the visible menu, so a second owner would cause command conflicts.
   api.registerHook(
-    "before_agent_reply",
+    "reply_dispatch",
     (event, context) => {
-      // OpenClaw 2026.7.1 may populate messageProvider instead of channel for
-      // Telegram-originated turns. An empty provider is also safe here:
-      // only our exact static slash commands can match below.
-      const provider = context?.channel ?? context?.messageProvider;
-      if (provider && provider !== "telegram") {
+      if (event.isTailDispatch || !isTelegramReplyDispatch(event)) {
         return undefined;
       }
 
-      const rendered = resolveUiCommandInput(event.cleanedBody);
-      return rendered ? { handled: true, reply: rendered } : undefined;
-    },
-    {
-      name: "glossary-static-ui-router",
-      description: "Render static Telegram commands without an LLM round-trip",
-    },
-  );
-
-  // Known terms bypass the model for both button clicks and ordinary text.
-  // This keeps one renderer and one visual format regardless of entry point.
-  api.registerHook(
-    "before_dispatch",
-    (event) => {
-      if (event.channel !== "telegram" || event.isGroup) {
-        return undefined;
+      const input = resolveReplyDispatchInput(event);
+      const staticScreen = resolveUiCommandInput(input);
+      if (staticScreen) {
+        return finishDeterministicReply(
+          staticScreen,
+          context,
+          "glossary_static_command",
+        );
       }
 
-      const article = resolveKnownTermInput(event.body ?? event.content);
-      return article
-        ? { handled: true, text: formatKnowledgeArticle(article) }
+      const article = resolveKnownTermInput(input);
+      const termCard = article ? renderTermCard(article.title) : undefined;
+      return termCard
+        ? finishDeterministicReply(termCard, context, "glossary_known_term")
         : undefined;
     },
     {
-      name: "glossary-known-term-router",
-      description: "Answer known Telegram glossary terms without an LLM round-trip",
+      name: "glossary-static-ui-router",
+      description: "Render static Telegram UI and known terms before model dispatch",
     },
   );
 }

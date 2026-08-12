@@ -109,6 +109,15 @@
     "value": true
   },
   {
+    "path": "plugins.entries.duckduckgo.config",
+    "value": {
+      "webSearch": {
+        "region": "us-en",
+        "safeSearch": "moderate"
+      }
+    }
+  },
+  {
     "path": "plugins.load.paths",
     "value": [
       "/home/node/.openclaw/extensions/glossary-ui",
@@ -121,18 +130,18 @@
   },
   {
     "path": "plugins.entries.tavily.enabled",
-    "value": true
+    "value": false
   },
   {
     "path": "tools.profile",
-    "value": "minimal"
+    "value": "full"
   },
   {
     "path": "tools.codeMode",
     "value": false
   },
   {
-    "path": "tools.alsoAllow",
+    "path": "tools.allow",
     "value": [
       "memory_search",
       "memory_get",
@@ -154,6 +163,10 @@
       "apply_patch",
       "browser"
     ]
+  },
+  {
+    "path": "tools.fs.workspaceOnly",
+    "value": true
   },
   {
     "path": "tools.web.search.enabled",

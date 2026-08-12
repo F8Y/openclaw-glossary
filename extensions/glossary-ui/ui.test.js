@@ -4,8 +4,10 @@ import test from "node:test";
 import { commandDefinitions, resolveUiCommandInput } from "./commands.js";
 import {
   interactiveDefinition,
+  isTelegramReplyDispatch,
   registerInteractions,
   resolveKnownTermInput,
+  resolveReplyDispatchInput,
   splitScreenPayload,
 } from "./interactions.js";
 import {
@@ -134,21 +136,18 @@ test("interaction and static UI routing registration is deterministic", () => {
   assert.equal(interactions[0], interactiveDefinition);
   assert.equal(interactions[0].channel, "telegram");
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
-  assert.equal(hooks.length, 2);
-  assert.deepEqual(
-    hooks.map((hook) => hook.name),
-    ["before_agent_reply", "before_dispatch"],
-  );
+  assert.equal(hooks.length, 1);
+  assert.deepEqual(hooks.map((hook) => hook.name), ["reply_dispatch"]);
   assert.equal(hooks[0].options.name, "glossary-static-ui-router");
-  assert.match(hooks[0].options.description, /static Telegram commands/i);
-  assert.equal(hooks[1].options.name, "glossary-known-term-router");
-  assert.match(hooks[1].options.description, /known Telegram glossary terms/i);
+  assert.match(hooks[0].options.description, /before model dispatch/i);
 });
 
 test("static slash commands render without plugin command ownership", () => {
   assert.deepEqual(resolveUiCommandInput("/menu"), renderMenu());
   assert.deepEqual(resolveUiCommandInput("/knowledge finance"), renderKnowledge("finance"));
   assert.deepEqual(resolveUiCommandInput("/sources@glossary_ai_bot"), renderSources());
+  assert.deepEqual(resolveUiCommandInput("/term"), renderExplain());
+  assert.deepEqual(resolveUiCommandInput("/term ROE"), renderTermCard("ROE"));
   assert.deepEqual(resolveUiCommandInput("/start cmd_knowledge"), renderKnowledge());
   assert.deepEqual(resolveUiCommandInput("/start term_ROE"), renderTermCard("ROE"));
   assert.equal(resolveUiCommandInput("/digest"), undefined);
@@ -163,33 +162,68 @@ test("static Telegram commands short-circuit the model with native buttons", () 
     registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
   });
 
-  const staticRouter = hooks.find((hook) => hook.name === "before_agent_reply");
+  const staticRouter = hooks.find((hook) => hook.name === "reply_dispatch");
+  const sent = [];
+  const processed = [];
+  const idle = [];
+  const runtime = {
+    dispatcher: {
+      sendFinalReply: (reply) => {
+        sent.push(reply);
+        return true;
+      },
+      getQueuedCounts: () => ({ tool: 0, block: 0, final: sent.length }),
+    },
+    recordProcessed: (...args) => processed.push(args),
+    markIdle: (reason) => idle.push(reason),
+  };
   const result = staticRouter.handler(
-    { cleanedBody: "/menu" },
-    { channel: "telegram" },
+    {
+      ctx: {
+        Surface: "telegram",
+        CommandBody: "/menu",
+        BodyForAgent: 'Use the "about" skill for this request.',
+      },
+    },
+    runtime,
   );
 
   assert.equal(result.handled, true);
-  assertValidReply(result.reply);
+  assert.equal(result.queuedFinal, true);
+  assert.deepEqual(result.counts, { tool: 0, block: 0, final: 1 });
+  assertValidReply(sent[0]);
+  assert.deepEqual(processed, [["completed", { reason: "glossary_static_command" }]]);
+  assert.deepEqual(idle, ["message_completed"]);
   assert.equal(
     staticRouter.handler(
-      { cleanedBody: "/menu" },
-      { messageProvider: "telegram" },
-    ).handled,
-    true,
-  );
-  assert.equal(
-    staticRouter.handler({ cleanedBody: "/menu" }, {}).handled,
-    true,
-  );
-  assert.equal(
-    staticRouter.handler({ cleanedBody: "/menu" }, { channel: "webchat" }),
+      { ctx: { Surface: "webchat", CommandBody: "/menu" } },
+      runtime,
+    ),
     undefined,
   );
   assert.equal(
-    staticRouter.handler({ cleanedBody: "/digest" }, { channel: "telegram" }),
+    staticRouter.handler(
+      { ctx: { Surface: "telegram", CommandBody: "/digest" } },
+      runtime,
+    ),
     undefined,
   );
+  assert.equal(sent.length, 1);
+});
+
+test("reply dispatch reads the clean command and identifies Telegram", () => {
+  const event = {
+    originatingChannel: "Telegram",
+    ctx: {
+      CommandBody: "/knowledge finance",
+      BodyForAgent: 'Use the "knowledge" skill for this request.',
+    },
+  };
+
+  assert.equal(isTelegramReplyDispatch(event), true);
+  assert.equal(resolveReplyDispatchInput(event), "/knowledge finance");
+  assert.equal(isTelegramReplyDispatch({ ctx: { Provider: "discord" } }), false);
+  assert.equal(resolveReplyDispatchInput({ ctx: { RawBody: "ROE" } }), "ROE");
 });
 
 test("about is distinct from the home menu", () => {
@@ -217,23 +251,47 @@ test("screen callback parser preserves the complete argument tail", () => {
   });
 });
 
-test("known Telegram terms are answered before model dispatch", async () => {
+test("known Telegram terms are answered before model dispatch", () => {
   const hooks = [];
   registerInteractions({
     registerInteractiveHandler: () => {},
     registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
   });
 
-  const handler = hooks.find(({ name }) => name === "before_dispatch")?.handler;
+  const handler = hooks.find(({ name }) => name === "reply_dispatch")?.handler;
   assert.equal(typeof handler, "function");
 
-  const known = await handler({ channel: "telegram", body: "что такое ROE?" });
-  assert.equal(known.handled, true);
-  assert.match(known.text, /^📗 ROE — Return on Equity/);
-  assert.match(known.text, /📐 ROE = Чистая прибыль \/ Собственный капитал/);
+  const sent = [];
+  const runtime = {
+    dispatcher: {
+      sendFinalReply: (reply) => {
+        sent.push(reply);
+        return true;
+      },
+      getQueuedCounts: () => ({ tool: 0, block: 0, final: sent.length }),
+    },
+    recordProcessed: () => {},
+    markIdle: () => {},
+  };
 
-  assert.equal(await handler({ channel: "telegram", body: "новый термин" }), undefined);
-  assert.equal(await handler({ channel: "discord", body: "ROE" }), undefined);
+  const known = handler(
+    { ctx: { Provider: "telegram", RawBody: "что такое ROE?" } },
+    runtime,
+  );
+  assert.equal(known.handled, true);
+  assert.equal(known.queuedFinal, true);
+  assertValidReply(sent[0]);
+  assert.match(sent[0].text, /^📗 ROE — Return on Equity/);
+  assert.match(sent[0].text, /📐 ROE = Чистая прибыль \/ Собственный капитал/);
+
+  assert.equal(
+    handler({ ctx: { Provider: "telegram", RawBody: "новый термин" } }, runtime),
+    undefined,
+  );
+  assert.equal(
+    handler({ ctx: { Provider: "discord", RawBody: "ROE" } }, runtime),
+    undefined,
+  );
 });
 
 test("callbacks edit navigation and known cards in place", async () => {
