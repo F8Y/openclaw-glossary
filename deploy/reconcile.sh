@@ -310,7 +310,7 @@ fi
 # probe отдельно, иначе деплой зелёный, а бот молчит без единой ошибки.
 log "проверяем Telegram-канал"
 if TELEGRAM_CHECK_OUTPUT="$(
-    REPO_DIR="$REPO_DIR" ENV_FILE="$ENV_FILE" \
+    env REPO_DIR="$REPO_DIR" ENV_FILE="$ENV_FILE" \
         "${REPO_DIR}/deploy/check-telegram.sh" 2>&1
 )"; then
     printf '%s\n' "$TELEGRAM_CHECK_OUTPUT"
