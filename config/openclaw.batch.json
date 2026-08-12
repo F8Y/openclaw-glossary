@@ -199,24 +199,12 @@
     "path": "channels.telegram.customCommands",
     "value": [
       {
-        "command": "menu",
-        "description": "Главное меню Glossaryck"
-      },
-      {
-        "command": "knowledge",
-        "description": "Каталог терминов и моделей"
-      },
-      {
         "command": "analyze",
         "description": "Разбор модели или релиза"
       },
       {
         "command": "digest",
         "description": "Дайджест новостей об ИИ"
-      },
-      {
-        "command": "sources",
-        "description": "Откуда я беру информацию"
       }
     ]
   },

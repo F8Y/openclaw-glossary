@@ -149,6 +149,25 @@ jobs:
             and (.commands | index("sources") != null)
             and (.categories | length >= 4)
           ' "$PLUGIN/ui-config.json"
+
+          # Команда должна принадлежать ровно одному маршрутизатору.
+          # Плагин обслуживает статический UI, customCommands отправляет
+          # команду агенту. Пересечение ломает регистрацию Telegram-команд.
+          OVERLAP=$(jq -nr \
+            --slurpfile batch config/openclaw.batch.json \
+            --slurpfile ui "$PLUGIN/ui-config.json" '
+              ($batch[0]
+                | map(select(.path == "channels.telegram.customCommands"))
+                | first.value
+                | map(.command)) as $custom
+              | [$ui[0].commands[] | select(. as $command | $custom | index($command))]
+              | join(", ")
+            ')
+          if [ -n "$OVERLAP" ]; then
+            echo "::error::Telegram-команды одновременно зарегистрированы плагином и customCommands: $OVERLAP"
+            exit 1
+          fi
+
           jq -e '
             any(.[];
               .path == "plugins.entries.glossary-ui.enabled"
