@@ -222,6 +222,11 @@ jobs:
           test -x deploy/check-telegram.sh
           grep -Fq 'plugins inspect telegram' deploy/check-telegram.sh
           grep -Fq 'channels status' deploy/check-telegram.sh
+          grep -Fq '.name == "reply_dispatch"' deploy/check-telegram.sh
+          if grep -Fq '.hookName == "reply_dispatch"' deploy/check-telegram.sh; then
+            echo "::error::plugins inspect сериализует typedHooks[].name, не hookName"
+            exit 1
+          fi
           grep -Fq 'check-telegram.sh' deploy/reconcile.sh
           grep -Fq 'TELEGRAM_BOT_TOKEN не задан' deploy/reconcile.sh
 
