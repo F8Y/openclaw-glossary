@@ -111,8 +111,15 @@ jobs:
               )
             )
             and any(.[];
+              .path == "models.providers.custom-bothub-chat.timeoutSeconds"
+            )
+            and any(.[];
+              .path == "agents.defaults.model.primary"
+              and .value == "cloudru/deepseek-ai/DeepSeek-V4-Flash"
+            )
+            and any(.[];
               .path == "agents.defaults.model.fallbacks"
-              and (.value | index("cloudru/deepseek-ai/DeepSeek-V4-Flash") != null)
+              and (.value | index("custom-bothub-chat/deepseek-v4-flash") != null)
             )
             and any(.[];
               .path == "agents.defaults.models"
