@@ -1,4 +1,26 @@
-import { renderScreen } from "./ui.js";
+import { renderScreen, renderTermCard } from "./ui.js";
+
+const TELEGRAM_COMMAND = /^\/([a-z][a-z0-9_]*)(?:@[a-z0-9_]+)?(?:\s+([\s\S]*))?$/i;
+const SAFE_TERM = /^[A-Za-z0-9_-]+$/;
+
+function renderStart(args = "") {
+  const payload = String(args).trim();
+  if (!payload) {
+    return renderScreen("start");
+  }
+
+  if (payload.startsWith("term_")) {
+    const term = payload.slice("term_".length);
+    return SAFE_TERM.test(term) ? renderTermCard(term) : undefined;
+  }
+
+  const screen = {
+    cmd_menu: "menu",
+    cmd_knowledge: "knowledge",
+    cmd_sources: "sources",
+  }[payload];
+  return screen ? renderScreen(screen) : undefined;
+}
 
 export const commandDefinitions = Object.freeze([
   {
@@ -27,7 +49,7 @@ export const commandDefinitions = Object.freeze([
     description: "Каталог терминов и моделей",
     acceptsArgs: true,
     requireAuth: true,
-    handler: (context) => renderScreen("knowledge", context.args),
+    handler: (args) => renderScreen("knowledge", args),
   },
   {
     name: "sources",
@@ -37,19 +59,22 @@ export const commandDefinitions = Object.freeze([
     handler: () => renderScreen("sources"),
   },
   {
-    // No-argument /start becomes instant. Known term buttons are handled by
-    // the interactive callback without invoking the agent. Manually entered
-    // /start arguments still continue through the existing agent/skill route.
     name: "start",
     description: "Открыть Glossaryck",
-    acceptsArgs: false,
+    acceptsArgs: true,
     requireAuth: true,
-    handler: () => renderScreen("start"),
+    handler: renderStart,
   },
 ]);
 
-export function registerCommands(api) {
-  for (const definition of commandDefinitions) {
-    api.registerCommand(definition);
+export function resolveUiCommandInput(input) {
+  const match = String(input ?? "").trim().match(TELEGRAM_COMMAND);
+  if (!match) {
+    return undefined;
   }
+
+  const command = commandDefinitions.find(
+    (definition) => definition.name === match[1].toLowerCase(),
+  );
+  return command?.handler(match[2]?.trim() ?? "");
 }

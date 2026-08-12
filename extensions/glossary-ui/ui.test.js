@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { commandDefinitions, registerCommands } from "./commands.js";
+import { commandDefinitions, resolveUiCommandInput } from "./commands.js";
 import {
   interactiveDefinition,
   registerInteractions,
@@ -118,29 +118,67 @@ test("plugin command inventory matches ui-config", () => {
   );
 
   const start = commandDefinitions.find((definition) => definition.name === "start");
-  assert.equal(start.acceptsArgs, false);
+  assert.equal(start.acceptsArgs, true);
   assert.ok(commandDefinitions.every((definition) => definition.requireAuth === true));
 });
 
-test("command and interaction registration is deterministic", () => {
-  const commands = [];
+test("interaction and static UI routing registration is deterministic", () => {
   const interactions = [];
   const hooks = [];
-  registerCommands({ registerCommand: (definition) => commands.push(definition.name) });
   registerInteractions({
     registerInteractiveHandler: (definition) => interactions.push(definition),
     registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
   });
 
-  assert.deepEqual(commands, UI_CONFIG.commands);
   assert.equal(interactions.length, 1);
   assert.equal(interactions[0], interactiveDefinition);
   assert.equal(interactions[0].channel, "telegram");
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
-  assert.equal(hooks.length, 1);
-  assert.equal(hooks[0].name, "before_dispatch");
-  assert.equal(hooks[0].options.name, "glossary-known-term-router");
-  assert.match(hooks[0].options.description, /known Telegram glossary terms/i);
+  assert.equal(hooks.length, 2);
+  assert.deepEqual(
+    hooks.map((hook) => hook.name),
+    ["before_agent_reply", "before_dispatch"],
+  );
+  assert.equal(hooks[0].options.name, "glossary-static-ui-router");
+  assert.match(hooks[0].options.description, /static Telegram commands/i);
+  assert.equal(hooks[1].options.name, "glossary-known-term-router");
+  assert.match(hooks[1].options.description, /known Telegram glossary terms/i);
+});
+
+test("static slash commands render without plugin command ownership", () => {
+  assert.deepEqual(resolveUiCommandInput("/menu"), renderMenu());
+  assert.deepEqual(resolveUiCommandInput("/knowledge finance"), renderKnowledge("finance"));
+  assert.deepEqual(resolveUiCommandInput("/sources@glossary_ai_bot"), renderSources());
+  assert.deepEqual(resolveUiCommandInput("/start cmd_knowledge"), renderKnowledge());
+  assert.deepEqual(resolveUiCommandInput("/start term_ROE"), renderTermCard("ROE"));
+  assert.equal(resolveUiCommandInput("/digest"), undefined);
+  assert.equal(resolveUiCommandInput("/start cmd_digest"), undefined);
+  assert.equal(resolveUiCommandInput("/start term_DOES_NOT_EXIST"), undefined);
+});
+
+test("static Telegram commands short-circuit the model with native buttons", () => {
+  const hooks = [];
+  registerInteractions({
+    registerInteractiveHandler: () => {},
+    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
+  });
+
+  const staticRouter = hooks.find((hook) => hook.name === "before_agent_reply");
+  const result = staticRouter.handler(
+    { cleanedBody: "/menu" },
+    { channel: "telegram" },
+  );
+
+  assert.equal(result.handled, true);
+  assertValidReply(result.reply);
+  assert.equal(
+    staticRouter.handler({ cleanedBody: "/menu" }, { channel: "webchat" }),
+    undefined,
+  );
+  assert.equal(
+    staticRouter.handler({ cleanedBody: "/digest" }, { channel: "telegram" }),
+    undefined,
+  );
 });
 
 test("about is distinct from the home menu", () => {

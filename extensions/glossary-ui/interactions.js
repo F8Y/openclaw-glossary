@@ -4,6 +4,7 @@ import {
   renderTermCard,
   toInteractiveResponse,
 } from "./ui.js";
+import { resolveUiCommandInput } from "./commands.js";
 import { formatKnowledgeArticle, getKnowledgeArticle } from "./knowledge.js";
 
 const SAFE_TERM = /^[A-Za-z0-9_-]+$/;
@@ -96,6 +97,25 @@ export const interactiveDefinition = Object.freeze({
 
 export function registerInteractions(api) {
   api.registerInteractiveHandler(interactiveDefinition);
+
+  // Static slash commands are advertised through Telegram customCommands,
+  // then intercepted here before the model runs. Keeping menu publication and
+  // command execution separate avoids duplicate Telegram command ownership.
+  api.registerHook(
+    "before_agent_reply",
+    (event, context) => {
+      if (context.channel !== "telegram") {
+        return undefined;
+      }
+
+      const rendered = resolveUiCommandInput(event.cleanedBody);
+      return rendered ? { handled: true, reply: rendered } : undefined;
+    },
+    {
+      name: "glossary-static-ui-router",
+      description: "Render static Telegram commands without an LLM round-trip",
+    },
+  );
 
   // Known terms bypass the model for both button clicks and ordinary text.
   // This keeps one renderer and one visual format regardless of entry point.

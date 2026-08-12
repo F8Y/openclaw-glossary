@@ -150,21 +150,24 @@ jobs:
             and (.categories | length >= 4)
           ' "$PLUGIN/ui-config.json"
 
-          # Команда должна принадлежать ровно одному маршрутизатору.
-          # Плагин обслуживает статический UI, customCommands отправляет
-          # команду агенту. Пересечение ломает регистрацию Telegram-команд.
-          OVERLAP=$(jq -nr \
-            --slurpfile batch config/openclaw.batch.json \
-            --slurpfile ui "$PLUGIN/ui-config.json" '
-              ($batch[0]
-                | map(select(.path == "channels.telegram.customCommands"))
-                | first.value
-                | map(.command)) as $custom
-              | [$ui[0].commands[] | select(. as $command | $custom | index($command))]
-              | join(", ")
-            ')
-          if [ -n "$OVERLAP" ]; then
-            echo "::error::Telegram-команды одновременно зарегистрированы плагином и customCommands: $OVERLAP"
+          # Публичное Telegram-меню задаётся только customCommands. Плагин
+          # перехватывает статические экраны до LLM, но не регистрирует
+          # одноимённые plugin-команды — иначе OpenClaw сообщает о конфликте.
+          jq -e '
+            any(.[];
+              .path == "channels.telegram.commands.native"
+              and .value == false
+            )
+            and any(.[];
+              .path == "channels.telegram.customCommands"
+              and ([.value[].command] as $commands
+                | all(["menu", "knowledge", "sources"][];
+                    . as $command | $commands | index($command) != null))
+            )
+          ' config/openclaw.batch.json
+
+          if grep -Rqs 'registerCommand' "$PLUGIN"/*.js; then
+            echo "::error::glossary-ui не должен регистрировать команды поверх customCommands"
             exit 1
           fi
 
