@@ -33,7 +33,7 @@ fi
 # недостаточен: плагин может загрузиться, но зарегистрировать reply_dispatch
 # через несовместимый legacy registerHook — тогда текст доходит, а кнопки нет.
 UI_INSPECT_OUTPUT="$("${COMPOSE[@]}" exec -T gateway \
-    openclaw plugins inspect glossary-ui --runtime --json 2>&1)" || {
+    openclaw plugins inspect glossary-ui --runtime --json)" || {
     printf '%s\n' "$UI_INSPECT_OUTPUT" >&2
     echo "ERROR: не удалось проверить glossary-ui" >&2
     exit 1
@@ -42,7 +42,9 @@ UI_INSPECT_OUTPUT="$("${COMPOSE[@]}" exec -T gateway \
 if ! jq -e '
     .plugin.status == "loaded"
     and .plugin.hookCount >= 1
-    and any(.typedHooks[]?; .hookName == "reply_dispatch")
+    # Runtime registry calls this field hookName internally, but
+    # `plugins inspect --json` deliberately exposes it as `name`.
+    and any(.typedHooks[]?; .name == "reply_dispatch")
   ' <<< "$UI_INSPECT_OUTPUT" > /dev/null; then
     printf '%s\n' "$UI_INSPECT_OUTPUT" >&2
     echo "ERROR: glossary-ui не зарегистрировал typed reply_dispatch" >&2

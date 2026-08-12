@@ -71,8 +71,10 @@ sudo docker compose \
        typedHooks: .typedHooks, customHooks: .customHooks}'
 ```
 
-Ожидается `status: "loaded"`, `hookCount: 1` и `reply_dispatch` в
-`typedHooks`. В `customHooks` его быть не должно. Команда `openclaw hooks list`
+Ожидается `status: "loaded"`, `hookCount: 1` и объект
+`{"name":"reply_dispatch"}` в `typedHooks`. Обратите внимание: JSON-отчёт
+называет поле `name`, хотя внутри registry оно называется `hookName`. В
+`customHooks` этого события быть не должно. Команда `openclaw hooks list`
 показывает legacy/internal hooks, поэтому отсутствие там старого
 `glossary-static-ui-router` после этой правки нормально.
 
