@@ -118,6 +118,10 @@
     }
   },
   {
+    "path": "plugins.entries.telegram.enabled",
+    "value": true
+  },
+  {
     "path": "plugins.load.paths",
     "value": [
       "/home/node/.openclaw/extensions/glossary-ui",
@@ -195,6 +199,10 @@
   {
     "path": "tools.web.fetch.timeoutSeconds",
     "value": 15
+  },
+  {
+    "path": "channels.telegram.enabled",
+    "value": true
   },
   {
     "path": "channels.telegram.commands.native",
