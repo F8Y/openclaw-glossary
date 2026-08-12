@@ -192,10 +192,6 @@
     "value": false
   },
   {
-    "path": "tools.fs.workspaceOnly",
-    "value": true
-  },
-  {
     "path": "channels.telegram.customCommands",
     "value": [
       {

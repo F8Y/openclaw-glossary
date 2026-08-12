@@ -233,8 +233,13 @@ jobs:
               and (.value | index("read") != null)
             )
             and any(.[];
-              .path == "tools.fs.workspaceOnly"
-              and .value == true
+              .path == "tools.deny"
+              and (.value | index("write") != null)
+              and (.value | index("edit") != null)
+              and (.value | index("apply_patch") != null)
+            )
+            and all(.[];
+              .path != "tools.fs.workspaceOnly"
             )
             and any(.[];
               .path == "agents.defaults.skills"

@@ -104,7 +104,11 @@ export function registerInteractions(api) {
   api.registerHook(
     "before_agent_reply",
     (event, context) => {
-      if (context.channel !== "telegram") {
+      // OpenClaw 2026.7.1 may populate messageProvider instead of channel for
+      // Telegram-originated turns. An empty provider is also safe here:
+      // only our exact static slash commands can match below.
+      const provider = context?.channel ?? context?.messageProvider;
+      if (provider && provider !== "telegram") {
         return undefined;
       }
 

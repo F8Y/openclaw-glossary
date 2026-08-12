@@ -172,6 +172,17 @@ test("static Telegram commands short-circuit the model with native buttons", () 
   assert.equal(result.handled, true);
   assertValidReply(result.reply);
   assert.equal(
+    staticRouter.handler(
+      { cleanedBody: "/menu" },
+      { messageProvider: "telegram" },
+    ).handled,
+    true,
+  );
+  assert.equal(
+    staticRouter.handler({ cleanedBody: "/menu" }, {}).handled,
+    true,
+  );
+  assert.equal(
     staticRouter.handler({ cleanedBody: "/menu" }, { channel: "webchat" }),
     undefined,
   );
