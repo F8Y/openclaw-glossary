@@ -169,6 +169,14 @@ jobs:
           # одноимённые plugin-команды — иначе OpenClaw сообщает о конфликте.
           jq -e '
             any(.[];
+              .path == "channels.telegram.enabled"
+              and .value == true
+            )
+            and any(.[];
+              .path == "plugins.entries.telegram.enabled"
+              and .value == true
+            )
+            and any(.[];
               .path == "channels.telegram.commands.native"
               and .value == false
             )
@@ -198,6 +206,14 @@ jobs:
 
           for f in "$PLUGIN"/*.js; do node --check "$f"; done
           node --test "$PLUGIN"/*.test.js
+
+          # /healthz не проверяет каналы. Без отдельного live probe gateway
+          # может быть зелёным, хотя Telegram даже не зарегистрирован.
+          test -x deploy/check-telegram.sh
+          grep -Fq 'plugins inspect telegram' deploy/check-telegram.sh
+          grep -Fq 'channels status' deploy/check-telegram.sh
+          grep -Fq 'check-telegram.sh' deploy/reconcile.sh
+          grep -Fq 'TELEGRAM_BOT_TOKEN не задан' deploy/reconcile.sh
 
       - name: Web search описан декларативно
         run: |
@@ -406,6 +422,12 @@ jobs:
           TELEGRAM_BOT_TOKEN=ci
           EOF
           docker compose --env-file /tmp/ci.env -f docker-compose.yml config -q
+          docker compose --profile cli --env-file /tmp/ci.env -f docker-compose.yml \
+            config --format json > /tmp/compose.json
+          jq -e '
+            .services.gateway.environment.TELEGRAM_BOT_TOKEN == "ci"
+            and .services.cli.environment.TELEGRAM_BOT_TOKEN == "ci"
+          ' /tmp/compose.json
           echo "compose OK"
 
       - name: порт не опубликован наружу

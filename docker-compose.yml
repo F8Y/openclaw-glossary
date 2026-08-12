@@ -103,6 +103,9 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       CLOUDRU_API_KEY: ${CLOUDRU_API_KEY:-}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Нужен channel probe из CLI-контейнера. Без токена команда может
+      # увидеть конфиг, но не подтвердить живое соединение с Telegram.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     volumes:
       - ${OPENCLAW_STATE_DIR}/config:/home/node/.openclaw
       - ${OPENCLAW_STATE_DIR}/workspace:/home/node/.openclaw/workspace

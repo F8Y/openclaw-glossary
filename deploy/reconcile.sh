@@ -126,6 +126,7 @@ set +a
 [[ -n "${OPENCLAW_IMAGE:-}" ]] || die "OPENCLAW_IMAGE не задан"
 [[ "$OPENCLAW_IMAGE" == *"@sha256:"* ]] \
     || log "ВНИМАНИЕ: образ не запинен по digest, детерминизм не гарантирован"
+[[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] || die "TELEGRAM_BOT_TOKEN не задан"
 
 # Критично: ниже идёт rsync --delete по пути, построенному из этой
 # переменной. Пустое значение превратит его в путь от корня.
@@ -302,6 +303,20 @@ if [[ "$healthy" -ne 1 ]]; then
     # Автооткат намеренно не делаем: на стейтфул-сервисе с миграциями
     # он способен сделать хуже, чем сломанный деплой. Будим человека.
     die "гейтвей не поднялся за $((HEALTH_RETRIES * HEALTH_DELAY))с на ${TARGET_SHA:0:8}"
+fi
+
+# HTTP-ready не означает, что пользовательский канал поднялся: gateway
+# успешно стартует и без Telegram. Проверяем bundled-плагин и живой getMe
+# probe отдельно, иначе деплой зелёный, а бот молчит без единой ошибки.
+log "проверяем Telegram-канал"
+if TELEGRAM_CHECK_OUTPUT="$(
+    REPO_DIR="$REPO_DIR" ENV_FILE="$ENV_FILE" \
+        "${REPO_DIR}/deploy/check-telegram.sh" 2>&1
+)"; then
+    printf '%s\n' "$TELEGRAM_CHECK_OUTPUT"
+else
+    printf '%s\n' "$TELEGRAM_CHECK_OUTPUT" >&2
+    die "Telegram-плагин или канал не прошёл live probe"
 fi
 
 # Проверяем не только строку provider, но и фактическую регистрацию
