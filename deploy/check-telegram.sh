@@ -29,6 +29,26 @@ if ! grep -Eq 'Status:[[:space:]]*loaded' <<< "$INSPECT_OUTPUT"; then
     exit 1
 fi
 
+# Проверяем именно типизированную регистрацию UI. Статус loaded сам по себе
+# недостаточен: плагин может загрузиться, но зарегистрировать reply_dispatch
+# через несовместимый legacy registerHook — тогда текст доходит, а кнопки нет.
+UI_INSPECT_OUTPUT="$("${COMPOSE[@]}" exec -T gateway \
+    openclaw plugins inspect glossary-ui --runtime --json 2>&1)" || {
+    printf '%s\n' "$UI_INSPECT_OUTPUT" >&2
+    echo "ERROR: не удалось проверить glossary-ui" >&2
+    exit 1
+}
+
+if ! jq -e '
+    .plugin.status == "loaded"
+    and .plugin.hookCount >= 1
+    and any(.typedHooks[]?; .hookName == "reply_dispatch")
+  ' <<< "$UI_INSPECT_OUTPUT" > /dev/null; then
+    printf '%s\n' "$UI_INSPECT_OUTPUT" >&2
+    echo "ERROR: glossary-ui не зарегистрировал typed reply_dispatch" >&2
+    exit 1
+fi
+
 STATUS_OUTPUT=""
 for ((attempt = 1; attempt <= PROBE_RETRIES; attempt++)); do
     if STATUS_OUTPUT="$("${COMPOSE[@]}" run --rm -T \
@@ -42,7 +62,7 @@ for ((attempt = 1; attempt <= PROBE_RETRIES; attempt++)); do
                 <<< "$STATUS_OUTPUT" \
            && grep -Eqi 'Telegram[^[:cntrl:]]*works' <<< "$STATUS_OUTPUT"; then
             printf '%s\n' "$STATUS_OUTPUT"
-            echo "OK: plugin=telegram, channel=running, probe=works"
+            echo "OK: plugin=telegram, channel=running, probe=works, ui=typed-reply-dispatch"
             exit 0
         fi
     fi

@@ -49,8 +49,6 @@ export function resolveKnownTermInput(input) {
 }
 
 export const interactiveDefinition = Object.freeze({
-  name: "glossary-ui-callbacks",
-  description: "Handle Glossaryck Telegram inline keyboard callbacks",
   channel: "telegram",
   namespace: UI_CALLBACK_NAMESPACE,
   async handler(context) {
@@ -147,12 +145,17 @@ function finishDeterministicReply(rendered, context, reason) {
 export function registerInteractions(api) {
   api.registerInteractiveHandler(interactiveDefinition);
 
+  // Use the typed hook API here. registerHook() is the legacy internal-hook
+  // surface and invokes its handler with one envelope argument; reply_dispatch
+  // is a typed two-argument contract (event, context). Mixing the two leaves
+  // the dispatcher context undefined and drops the deterministic UI reply.
+  //
   // reply_dispatch runs before skill-command expansion and before the model.
   // before_agent_reply is too late for /knowledge, /sources and /about: by that
   // point OpenClaw has replaced the slash command with "Use the ... skill".
   // We deliberately do not register plugin commands: Telegram customCommands
   // owns the visible menu, so a second owner would cause command conflicts.
-  api.registerHook(
+  api.on(
     "reply_dispatch",
     (event, context) => {
       if (event.isTailDispatch || !isTelegramReplyDispatch(event)) {
@@ -174,10 +177,6 @@ export function registerInteractions(api) {
       return termCard
         ? finishDeterministicReply(termCard, context, "glossary_known_term")
         : undefined;
-    },
-    {
-      name: "glossary-static-ui-router",
-      description: "Render static Telegram UI and known terms before model dispatch",
     },
   );
 }
