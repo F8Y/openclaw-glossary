@@ -127,13 +127,32 @@ test("plugin command inventory matches ui-config", () => {
 test("interaction and static UI routing registration is deterministic", () => {
   const interactions = [];
   const hooks = [];
+  const registrationNames = new Set();
   registerInteractions({
-    registerInteractiveHandler: (definition) => interactions.push(definition),
-    registerHook: (name, handler, options) => hooks.push({ name, handler, options }),
+    registerInteractiveHandler: (definition) => {
+      assert.equal(
+        typeof definition.name,
+        "string",
+        "interactive handler registration requires a name",
+      );
+      assert.ok(definition.name.trim(), "interactive handler name must not be empty");
+      assert.equal(registrationNames.has(definition.name), false);
+      registrationNames.add(definition.name);
+      interactions.push(definition);
+    },
+    registerHook: (name, handler, options) => {
+      assert.equal(typeof options?.name, "string", "hook registration requires a name");
+      assert.ok(options.name.trim(), "hook name must not be empty");
+      assert.equal(registrationNames.has(options.name), false);
+      registrationNames.add(options.name);
+      hooks.push({ name, handler, options });
+    },
   });
 
   assert.equal(interactions.length, 1);
   assert.equal(interactions[0], interactiveDefinition);
+  assert.equal(interactions[0].name, "glossary-ui-callbacks");
+  assert.match(interactions[0].description, /Telegram inline keyboard callbacks/i);
   assert.equal(interactions[0].channel, "telegram");
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
   assert.equal(hooks.length, 1);
