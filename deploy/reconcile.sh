@@ -8,7 +8,7 @@
 # разъехалось — и починить его должен именно безусловный прогон.
 #
 # Запускается из openclaw-reconcile.service, не вручную.
-set -euo pipefail
+set -Eeuo pipefail
 
 REPO_DIR="${REPO_DIR:-/opt/openclaw-glossary}"
 BRANCH="${BRANCH:-deploy}"
@@ -19,9 +19,41 @@ LOCK_FILE="${RUN_DIR}/reconcile.lock"
 HEALTH_URL="http://127.0.0.1:18789"
 HEALTH_RETRIES=30
 HEALTH_DELAY=5
+TARGET_SHA=""
+SELF_REEXECUTED="${OPENCLAW_RECONCILE_REEXECUTED:-0}"
 
 log() { printf '%s [reconcile] %s\n' "$(date -Is)" "$*"; }
-die() { log "ОШИБКА: $*"; exit 1; }
+
+# Записываем SHA для любого вида отказа, а не только для health-check.
+# Раньше ошибка config set показывалась в алерте как «Сломанный SHA:
+# неизвестен», хотя TARGET_SHA уже был известен.
+record_failed_state() {
+    local failed_sha="${TARGET_SHA:-неизвестен}"
+
+    mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+    printf '%s\n' "$failed_sha" > "${STATE_DIR}/failed-sha" 2>/dev/null || true
+    date -Is > "${STATE_DIR}/failed-at" 2>/dev/null || true
+}
+
+die() {
+    log "ОШИБКА: $*"
+    record_failed_state
+    exit 1
+}
+
+on_unexpected_error() {
+    local rc=$?
+    local line="${BASH_LINENO[0]:-неизвестна}"
+
+    # Не даём сбою внутри самой диагностики рекурсивно вызвать ERR trap.
+    trap - ERR
+    set +e
+    log "ОШИБКА: необработанный сбой, код ${rc}, строка ${line}"
+    record_failed_state
+    exit "$rc"
+}
+
+trap on_unexpected_error ERR
 
 # --- Блокировка ------------------------------------------------------
 # Таймер может выстрелить, пока предыдущий прогон ещё тянет образ.
@@ -35,6 +67,9 @@ fi
 cd "$REPO_DIR"
 
 # --- Синхронизация с git ---------------------------------------------
+SELF_PATH="${REPO_DIR}/deploy/reconcile.sh"
+SELF_HASH_BEFORE="$(sha256sum "$SELF_PATH" | cut -d' ' -f1)"
+
 log "получаем origin/${BRANCH}"
 git fetch --quiet origin "$BRANCH"
 
@@ -50,6 +85,20 @@ if [[ "$PREVIOUS_SHA" != "$TARGET_SHA" ]]; then
     log "коммит: ${PREVIOUS_SHA:0:8} -> ${TARGET_SHA:0:8}"
 else
     log "коммит без изменений (${TARGET_SHA:0:8}), применяем состояние"
+fi
+
+# Текущий процесс продолжает исполнять ту версию shell-скрипта, с которой
+# стартовал, даже если git reset уже заменил файл на диске. Это критично для
+# миграций: старый reconcile может увидеть новый batch, но ещё не знать, как
+# удалить устаревший ключ. Перезапускаемся новым файлом до применения state.
+SELF_HASH_AFTER="$(sha256sum "$SELF_PATH" | cut -d' ' -f1)"
+if [[ "$SELF_HASH_BEFORE" != "$SELF_HASH_AFTER" \
+      && "$SELF_REEXECUTED" != "1" ]]; then
+    log "reconcile.sh изменился, перезапускаемся новой версией"
+    flock -u 9
+    exec 9>&-
+    export OPENCLAW_RECONCILE_REEXECUTED=1
+    exec "$SELF_PATH"
 fi
 
 # --- Расшифровка секретов --------------------------------------------
@@ -250,8 +299,6 @@ for ((i = 1; i <= HEALTH_RETRIES; i++)); do
 done
 
 if [[ "$healthy" -ne 1 ]]; then
-    echo "$TARGET_SHA" > "${STATE_DIR}/failed-sha"
-    date -Is > "${STATE_DIR}/failed-at"
     # Автооткат намеренно не делаем: на стейтфул-сервисе с миграциями
     # он способен сделать хуже, чем сломанный деплой. Будим человека.
     die "гейтвей не поднялся за $((HEALTH_RETRIES * HEALTH_DELAY))с на ${TARGET_SHA:0:8}"

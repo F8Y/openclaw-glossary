@@ -65,6 +65,19 @@ jobs:
       - name: bash -n
         run: for f in deploy/*.sh bootstrap.sh; do bash -n "$f"; done
 
+      - name: Reconcile безопасно обновляет сам себя
+        run: |
+          set -euo pipefail
+          SCRIPT=deploy/reconcile.sh
+
+          # Иначе старый процесс после git reset применяет новый batch старой
+          # логикой — именно так tools.allow столкнулся с legacy alsoAllow.
+          grep -Fq 'OPENCLAW_RECONCILE_REEXECUTED' "$SCRIPT"
+          grep -Fq 'reconcile.sh изменился, перезапускаемся новой версией' "$SCRIPT"
+
+          # Любой отказ после определения TARGET_SHA должен попадать в alert.
+          grep -Fq 'record_failed_state' "$SCRIPT"
+
       - name: yamllint
         run: |
           pipx install yamllint
