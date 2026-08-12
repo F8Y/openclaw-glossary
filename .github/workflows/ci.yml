@@ -159,10 +159,30 @@ jobs:
       - name: Web search описан декларативно
         run: |
           set -euo pipefail
+
+          PLUGIN=extensions/tavily-provider
+          test -s "$PLUGIN/openclaw.plugin.json"
+          test -s "$PLUGIN/package.json"
+          jq -e '
+            .id == "tavily"
+            and (.contracts.webSearchProviders | index("tavily") != null)
+            and (.setup.providers[0].envVars | index("TAVILY_API_KEY") != null)
+          ' "$PLUGIN/openclaw.plugin.json"
+          for f in "$PLUGIN"/*.js; do node --check "$f"; done
+          node --test "$PLUGIN"/*.test.js
+
           jq -e '
             any(.[];
               .path == "plugins.entries.duckduckgo.enabled"
+              and .value == false
+            )
+            and any(.[];
+              .path == "plugins.entries.tavily.enabled"
               and .value == true
+            )
+            and any(.[];
+              .path == "plugins.load.paths"
+              and (.value | index("/home/node/.openclaw/extensions/tavily-provider") != null)
             )
             and any(.[];
               .path == "tools.web.search.enabled"
@@ -170,7 +190,7 @@ jobs:
             )
             and any(.[];
               .path == "tools.web.search.provider"
-              and .value == "duckduckgo"
+              and .value == "tavily"
             )
             and any(.[];
               .path == "tools.web.search.cacheTtlMinutes"
@@ -301,6 +321,7 @@ jobs:
           OPENCLAW_GATEWAY_TOKEN=ci
           OPENAI_API_KEY=ci
           OPENAI_BASE_URL=https://example.invalid/v1
+          TAVILY_API_KEY=ci
           TELEGRAM_BOT_TOKEN=ci
           EOF
           docker compose --env-file /tmp/ci.env -f docker-compose.yml config -q

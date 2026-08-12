@@ -129,27 +129,26 @@ fi
 # отдельно помечаем изменение кода: config fingerprint его не видит,
 # но без рестарта gateway продолжил бы исполнять старый модуль.
 PLUGIN_CHANGED=0
-PLUGIN_SRC="${REPO_DIR}/extensions/glossary-ui"
+PLUGIN_SRC="${REPO_DIR}/extensions"
 PLUGIN_ROOT="${OPENCLAW_STATE_DIR}/config/extensions"
-PLUGIN_DST="${PLUGIN_ROOT}/glossary-ui"
 
-[[ -d "$PLUGIN_SRC" ]] || die "нет исходников плагина glossary-ui"
+[[ -d "${PLUGIN_SRC}/glossary-ui" ]] || die "нет исходников плагина glossary-ui"
+[[ -d "${PLUGIN_SRC}/tavily-provider" ]] || die "нет исходников плагина tavily-provider"
 # install -d не только создаёт каталог, но и чинит владельца/режим уже
 # существующего root:root/0700 после прежних запусков с umask 077.
 install -d -o 1000 -g 1000 -m 0700 "$PLUGIN_ROOT"
-install -d -o 1000 -g 1000 -m 0755 "$PLUGIN_DST"
 
 PLUGIN_DIFF="$(rsync -ain --no-owner --no-group --delete \
-    "${PLUGIN_SRC}/" "${PLUGIN_DST}/")"
+    "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/")"
 if [[ -n "$PLUGIN_DIFF" ]]; then
     PLUGIN_CHANGED=1
-    log "плагин glossary-ui изменился"
+    log "локальные плагины изменились"
 else
-    log "плагин glossary-ui без изменений"
+    log "локальные плагины без изменений"
 fi
 
-rsync -a --no-owner --no-group --delete "${PLUGIN_SRC}/" "${PLUGIN_DST}/"
-chown -R 1000:1000 "$PLUGIN_DST"
+rsync -a --no-owner --no-group --delete "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/"
+chown -R 1000:1000 "$PLUGIN_ROOT"
 # rsync -a сохраняет режим исходного каталога, но родитель обязан
 # оставаться доступным только владельцу node и при этом проходимым для него.
 chown 1000:1000 "$PLUGIN_ROOT"

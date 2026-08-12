@@ -88,6 +88,26 @@ export function renderMenu() {
   );
 }
 
+export function renderAbout() {
+  return reply(
+    [
+      "📗 О Glossaryck",
+      "",
+      "Объясняю термины из ИИ и финансов простым языком — с формулами, оговорками и источниками.",
+      "",
+      "📚 Карточки из проверенной локальной базы открываются сразу, без ожидания модели.",
+      "📰 Дайджест собираю только за выбранный период и проверяю по веб-источникам.",
+      "⚠️ Не даю инвестиционных рекомендаций и отмечаю непроверенные заявления.",
+    ].join("\n"),
+    [
+      callbackButton("📚 База знаний", "screen:knowledge"),
+      callbackButton("📰 Новости об ИИ", "run:digest"),
+      callbackButton("🔎 Источники", "screen:sources"),
+      callbackButton("🏠 Главное меню", "screen:menu"),
+    ],
+  );
+}
+
 export function renderExplain() {
   const examples = [
     { label: "RAG", payload: "RAG" },
@@ -198,6 +218,7 @@ export function renderScreen(screen, args = "") {
     case "explain":
       return renderExplain();
     case "about":
+      return renderAbout();
     case "menu":
     case "start":
     default:

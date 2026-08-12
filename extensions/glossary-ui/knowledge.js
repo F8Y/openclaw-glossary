@@ -137,9 +137,9 @@ export function formatKnowledgeArticle(article) {
     .replace(/^ {4}(.+)$/gm, "📐 $1")
     .replace(
       /^Источник:\s*(?!(?:https?:\/\/))(\S+)$/gm,
-      "🔗 Источник: https://$1",
+      "📎 Источник: https://$1",
     )
-    .replace(/^Источник:\s*/gm, "🔗 Источник: ")
+    .replace(/^Источник:\s*/gm, "📎 Источник: ")
     .trim();
 
   return [

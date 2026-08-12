@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { commandDefinitions, registerCommands } from "./commands.js";
-import { interactiveDefinition, registerInteractions } from "./interactions.js";
+import {
+  interactiveDefinition,
+  registerInteractions,
+  resolveKnownTermInput,
+  splitScreenPayload,
+} from "./interactions.js";
 import {
   UI_CALLBACK_NAMESPACE,
   UI_CONFIG,
+  renderAbout,
   renderExplain,
   renderKnowledge,
   renderMenu,
@@ -47,7 +53,13 @@ function assertValidReply(reply) {
 }
 
 test("every screen is a compact native Telegram keyboard", () => {
-  const replies = [renderMenu(), renderExplain(), renderKnowledge(), renderSources()];
+  const replies = [
+    renderMenu(),
+    renderAbout(),
+    renderExplain(),
+    renderKnowledge(),
+    renderSources(),
+  ];
 
   for (const category of UI_CONFIG.categories) {
     replies.push(renderKnowledge(category.id));
@@ -82,6 +94,7 @@ test("every configured term resolves to a local knowledge article", () => {
       assertValidReply(card);
       assert.match(card.text, /^📗 /);
       assert.match(card.text, /📚 База знаний Glossaryck$/);
+      assert.doesNotMatch(card.text, /^🔗 Источник:/m);
       assert.doesNotMatch(card.text, /memory\/knowledge|\.md$/m);
     }
   }
@@ -112,9 +125,11 @@ test("plugin command inventory matches ui-config", () => {
 test("command and interaction registration is deterministic", () => {
   const commands = [];
   const interactions = [];
+  const hooks = [];
   registerCommands({ registerCommand: (definition) => commands.push(definition.name) });
   registerInteractions({
     registerInteractiveHandler: (definition) => interactions.push(definition),
+    registerHook: (name, handler) => hooks.push({ name, handler }),
   });
 
   assert.deepEqual(commands, UI_CONFIG.commands);
@@ -122,6 +137,52 @@ test("command and interaction registration is deterministic", () => {
   assert.equal(interactions[0], interactiveDefinition);
   assert.equal(interactions[0].channel, "telegram");
   assert.equal(interactions[0].namespace, UI_CALLBACK_NAMESPACE);
+  assert.equal(hooks.length, 1);
+  assert.equal(hooks[0].name, "before_dispatch");
+});
+
+test("about is distinct from the home menu", () => {
+  assert.notDeepEqual(renderAbout(), renderMenu());
+  assert.match(renderAbout().text, /О Glossaryck/);
+  assert.match(renderAbout().text, /инвестиционных рекомендаций/);
+});
+
+test("known text terms resolve through the deterministic renderer", () => {
+  assert.equal(resolveKnownTermInput("ROE")?.title, "ROE");
+  assert.equal(resolveKnownTermInput("что такое EBITDA?")?.title, "EBITDA");
+  assert.equal(resolveKnownTermInput("Объясните контекстное окно")?.title, "Контекстное окно");
+  assert.equal(resolveKnownTermInput("ROE или ROA — что лучше?"), undefined);
+  assert.equal(resolveKnownTermInput("/digest"), undefined);
+});
+
+test("screen callback parser preserves the complete argument tail", () => {
+  assert.deepEqual(splitScreenPayload("screen:knowledge:models:detail"), {
+    screen: "knowledge",
+    args: "models:detail",
+  });
+  assert.deepEqual(splitScreenPayload("screen:menu"), {
+    screen: "menu",
+    args: "",
+  });
+});
+
+test("known Telegram terms are answered before model dispatch", async () => {
+  const hooks = [];
+  registerInteractions({
+    registerInteractiveHandler: () => {},
+    registerHook: (name, handler) => hooks.push({ name, handler }),
+  });
+
+  const handler = hooks.find(({ name }) => name === "before_dispatch")?.handler;
+  assert.equal(typeof handler, "function");
+
+  const known = await handler({ channel: "telegram", body: "что такое ROE?" });
+  assert.equal(known.handled, true);
+  assert.match(known.text, /^📗 ROE — Return on Equity/);
+  assert.match(known.text, /📐 ROE = Чистая прибыль \/ Собственный капитал/);
+
+  assert.equal(await handler({ channel: "telegram", body: "новый термин" }), undefined);
+  assert.equal(await handler({ channel: "discord", body: "ROE" }), undefined);
 });
 
 test("callbacks edit navigation and known cards in place", async () => {

@@ -4,8 +4,48 @@ import {
   renderTermCard,
   toInteractiveResponse,
 } from "./ui.js";
+import { formatKnowledgeArticle, getKnowledgeArticle } from "./knowledge.js";
 
 const SAFE_TERM = /^[A-Za-z0-9_-]+$/;
+
+export function splitScreenPayload(payload) {
+  const route = payload.slice("screen:".length);
+  const separator = route.indexOf(":");
+
+  if (separator === -1) {
+    return { screen: route || "menu", args: "" };
+  }
+
+  return {
+    screen: route.slice(0, separator) || "menu",
+    args: route.slice(separator + 1),
+  };
+}
+
+function stripWrapper(value) {
+  return value
+    .trim()
+    .replace(/^["'«„“]+|["'»“”]+$/gu, "")
+    .replace(/[?!.]+$/u, "")
+    .trim();
+}
+
+export function resolveKnownTermInput(input) {
+  const text = String(input ?? "").trim();
+  if (!text || text.startsWith("/") || text.length > 120) {
+    return undefined;
+  }
+
+  const direct = getKnowledgeArticle(stripWrapper(text));
+  if (direct) {
+    return direct;
+  }
+
+  const prompted = text.match(
+    /^(?:что\s+такое|что\s+значит|объясни(?:те)?|расшифруй(?:те)?)\s+(.+)$/iu,
+  );
+  return prompted ? getKnowledgeArticle(stripWrapper(prompted[1])) : undefined;
+}
 
 export const interactiveDefinition = Object.freeze({
   channel: "telegram",
@@ -18,7 +58,7 @@ export const interactiveDefinition = Object.freeze({
     const payload = String(context.callback?.payload ?? "");
 
     if (payload.startsWith("screen:")) {
-      const [, screen = "menu", args = ""] = payload.split(":", 3);
+      const { screen, args } = splitScreenPayload(payload);
       await context.respond.editMessage(
         toInteractiveResponse(renderScreen(screen, args)),
       );
@@ -56,4 +96,17 @@ export const interactiveDefinition = Object.freeze({
 
 export function registerInteractions(api) {
   api.registerInteractiveHandler(interactiveDefinition);
+
+  // Known terms bypass the model for both button clicks and ordinary text.
+  // This keeps one renderer and one visual format regardless of entry point.
+  api.registerHook("before_dispatch", (event) => {
+    if (event.channel !== "telegram" || event.isGroup) {
+      return undefined;
+    }
+
+    const article = resolveKnownTermInput(event.body ?? event.content);
+    return article
+      ? { handled: true, text: formatKnowledgeArticle(article) }
+      : undefined;
+  });
 }

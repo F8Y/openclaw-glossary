@@ -106,16 +106,21 @@
   },
   {
     "path": "plugins.entries.duckduckgo.enabled",
-    "value": true
+    "value": false
   },
   {
     "path": "plugins.load.paths",
     "value": [
-      "/home/node/.openclaw/extensions/glossary-ui"
+      "/home/node/.openclaw/extensions/glossary-ui",
+      "/home/node/.openclaw/extensions/tavily-provider"
     ]
   },
   {
     "path": "plugins.entries.glossary-ui.enabled",
+    "value": true
+  },
+  {
+    "path": "plugins.entries.tavily.enabled",
     "value": true
   },
   {
@@ -156,7 +161,7 @@
   },
   {
     "path": "tools.web.search.provider",
-    "value": "duckduckgo"
+    "value": "tavily"
   },
   {
     "path": "tools.web.search.maxResults",
@@ -261,10 +266,10 @@
     "path": "channels.telegram.streaming.progress.labels",
     "value": [
       "🦞 Lobstering…",
-      "🤖 Beboopping…",
-      "🔎 Ищу и проверяю…",
-      "🧠 Собираю главное…",
-      "📚 Листаю базу знаний…"
+      "🦞 Beboopping…",
+      "🦞 Ищу и проверяю…",
+      "🦞 Собираю главное…",
+      "🦞 Листаю базу знаний…"
     ]
   },
   {

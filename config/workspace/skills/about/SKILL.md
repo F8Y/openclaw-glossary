@@ -42,7 +42,7 @@ Fallback для первого сообщения, если детерминир
 
 📚 [Каталог терминов](https://t.me/glossary_ai_bot?start=cmd_knowledge)
 📰 [Новости об ИИ](https://t.me/glossary_ai_bot?start=cmd_digest)
-🔍 [Мои источники](https://t.me/glossary_ai_bot?start=cmd_sources)
+🔎 [Мои источники](https://t.me/glossary_ai_bot?start=cmd_sources)
 
 Нативные кнопки основных экранов рисует `glossary-ui`. Ссылки здесь нужны
 как fallback и для переноса между Telegram-клиентами; инструмент `message`

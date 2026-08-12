@@ -45,7 +45,7 @@ Fallback главного экрана навигации, если `glossary-ui
 **Ещё**
 
 📰 [Новости об ИИ](https://t.me/glossary_ai_bot?start=cmd_digest)
-🔍 [Мои источники](https://t.me/glossary_ai_bot?start=cmd_sources)
+🔎 [Мои источники](https://t.me/glossary_ai_bot?start=cmd_sources)
 
 Или просто напишите любой термин — найду и объясню.
 
