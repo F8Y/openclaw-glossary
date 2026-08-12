@@ -22,6 +22,11 @@ function renderStart(args = "") {
   return screen ? renderScreen(screen) : undefined;
 }
 
+function renderTerm(args = "") {
+  const term = String(args).trim();
+  return (term ? renderTermCard(term) : undefined) ?? renderScreen("explain");
+}
+
 export const commandDefinitions = Object.freeze([
   {
     name: "menu",
@@ -43,6 +48,13 @@ export const commandDefinitions = Object.freeze([
     acceptsArgs: false,
     requireAuth: true,
     handler: () => renderScreen("explain"),
+  },
+  {
+    name: "term",
+    description: "Объяснить термин",
+    acceptsArgs: true,
+    requireAuth: true,
+    handler: renderTerm,
   },
   {
     name: "knowledge",

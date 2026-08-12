@@ -6,9 +6,9 @@ Pair of bots:
 
 ## Deploy
 
-Deployed on VDS (Cloud.ru) with TG channel. BotHub remains the default LLM
-provider; Cloud.ru Foundation Models is configured as the fallback and as a
-session-scoped test provider.
+Deployed on VDS (Cloud.ru) with TG channel. Cloud.ru Foundation Models is the
+primary LLM provider; BotHub remains the fallback and a session-scoped test
+provider.
 
 Изменения едут только через git: PR в `master` → CI → **Promote to deploy**
 в Actions. На сервере systemd-таймер каждые 5 минут приводит состояние

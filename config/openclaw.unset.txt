@@ -1,0 +1,7 @@
+# Пути, которыми GitOps больше не владеет через batch, но которые должны
+# исчезнуть из authored openclaw.json. Иначе старые ручные настройки живут
+# бесконечно: `config set --batch-json` удалённые ключи не очищает.
+
+# `tools.allow` — строгий список. OpenClaw не разрешает одновременно хранить
+# старый additive-список `alsoAllow`, поэтому удаляем его перед batch set.
+tools.alsoAllow

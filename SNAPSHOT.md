@@ -58,13 +58,16 @@ Cloud.ru стоит в том же облаке, что и VM. BotHub остаё
 
 ## Права бота
 
-Профиль `minimal`. Запрещено: `exec`, `process`, `write`, `edit`,
-`apply_patch`, `browser`. Разрешено: `memory_search`, `memory_get`, `read`,
-`web_search`, `web_fetch`, `message`, `cron`, `session_status`.
+Базовый профиль `full` сразу сужается строгим `tools.allow`: разрешены только
+`memory_search`, `memory_get`, `read`, `web_search`, `web_fetch`, `message`,
+`cron`, `session_status`. `exec`, `process`, `write`, `edit`, `apply_patch` и
+`browser` дополнительно запрещены в `tools.deny`.
 
-`read` нужен скиллам для прогрессивного раскрытия, поэтому оставлен,
-но ограничен `tools.fs.workspaceOnly: true` — иначе он дотягивается
-до `openclaw.json` и `auth-profiles.json`.
+Такая форма заменяет `minimal + alsoAllow`: в OpenClaw 2026.7.1 секции
+`tools.fs` больше не расширяют minimal-профиль и тот печатает предупреждение
+на каждый запрос. Итоговый набор инструментов не расширился. `read` по-прежнему
+ограничен `tools.fs.workspaceOnly: true`, иначе он может дотянуться до
+`openclaw.json` и `auth-profiles.json`.
 
 Доступ к боту двухступенчатый: парринг даёт переписку,
 `channels.telegram.allowFrom` плюс `commands.allowFrom` — команды.
@@ -74,12 +77,13 @@ Cloud.ru стоит в том же облаке, что и VM. BotHub остаё
 ## Состав репозитория
 
 ```
-config/openclaw.batch.json     71 декларативный путь, применяется целиком
+config/openclaw.batch.json     декларативные пути, применяются целиком
+config/openclaw.unset.txt      ключи, которые GitOps должен удалить из state
 config/workspace/              AGENTS.md · SOUL.md · IDENTITY.md — 6764 из 7000 байт
 config/workspace/skills/       about · term · digest · sources · knowledge · analyze
 config/knowledge/              ai-glossary · finance-glossary · models · sources
 extensions/glossary-ui/        детерминированный Telegram-интерфейс, минуя модель
-extensions/tavily-provider/    провайдер поиска, включён, но недостижим
+extensions/tavily-provider/    резервный провайдер, сохранён, но выключен
 deploy/                        reconcile.sh + systemd-юниты
 ```
 
@@ -88,23 +92,28 @@ deploy/                        reconcile.sh + systemd-юниты
 
 ## Поиск
 
-`tools.web.search.provider = duckduckgo`. HTML-выдача, иногда отдаёт капчу.
+`tools.web.search.provider = duckduckgo`. Bundled-плагин включён явно;
+reconcile проверяет его регистрацию, а `deploy/check-duckduckgo.sh` вручную
+проверяет HTML-выдачу из сети gateway. HTML-поиск иногда отдаёт капчу — это
+ограничение IP со стороны DuckDuckGo, а не ошибка модели или маршрутизации.
 Оба скилла, зависящих от поиска, имеют ветку отказа и не рассказывают
 пользователю про провайдеры.
 
-`tavily-provider` написан и включён, но недостижим: AWS ELB отвечает `403`
-на запросы с российского IP — блокировка до API, ключ ни при чём.
-Переключение обратно — одно значение `provider`.
+`tavily-provider` написан, но выключен: AWS ELB отвечает `403` на запросы с
+российского IP — блокировка до API, ключ ни при чём. Исходник сохранён для
+возможного возврата, но активным владельцем `web_search` остаётся DuckDuckGo.
 
 ## Интерфейс
 
-Кнопки Telegram сделаны markdown-ссылками вида
-`https://t.me/glossary_ai_bot?start=term_ROE`. Callback-кнопки в этой сборке
-отрисовываются, но до агента не доходят.
+Меню и каталог используют нативные callback-кнопки Telegram. Навигация и
+известные карточки редактируют сообщение на месте; markdown deep links
+остались только у переносимых ссылок на смежные термины.
 
-Статические экраны (`/start`, `/menu`, `/about`, `/knowledge`, `/sources`,
-`/explain`) перехватывает `glossary-ui` до модели — мгновенно и без расхода
-токенов. Остальное идёт агенту.
+`glossary-ui` перехватывает `reply_dispatch` до раскрытия workspace-скилла и
+до модели. Поэтому `/start`, `/menu`, `/about`, `/knowledge`, `/sources`,
+`/explain`, `/term` и известные локальные термины отвечают без LLM. Из команд
+видимого меню модель запускают только `/digest` и `/analyze`; неизвестный
+термин, написанный обычным текстом, по-прежнему уходит агенту.
 
 Эмодзи — разметка блоков с закреплёнными значениями, словарь в `SOUL.md`.
 
@@ -123,6 +132,7 @@ yamllint, валидность JSON и systemd-юнитов, `docker compose con
 ## Чего не хватает
 
 - `/analyze` и переписанный `/digest` не проверены на живых данных
+- доступность HTML-поиска DuckDuckGo нужно проверить на VM после выкладки
 - резервный маршрут на BotHub не проверен принудительным отказом основного
 - покрытие квоты Cloud.ru не подтверждено — карта личная, потолка нет
 - Telegram-идентификатор председателя не добавлен в оба списка доступа,

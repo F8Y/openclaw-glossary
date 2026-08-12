@@ -175,19 +175,45 @@ config_fingerprint() {
 }
 
 CONFIG_CHANGED=0
-if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
+if [[ -f "${REPO_DIR}/config/openclaw.batch.json" \
+      || -f "${REPO_DIR}/config/openclaw.unset.txt" ]]; then
     log "применяем конфиг агентов"
 
     FINGERPRINT_BEFORE="$(config_fingerprint)"
 
-    if CONFIG_OUTPUT="$(
-        "${COMPOSE[@]}" run --rm -T cli config set \
-            --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" 2>&1
-    )"; then
-        printf '%s\n' "$CONFIG_OUTPUT"
-    else
-        printf '%s\n' "$CONFIG_OUTPUT" >&2
-        die "не удалось применить декларативный конфиг OpenClaw"
+    # config set применяет новые значения, но не удаляет ключи, исчезнувшие
+    # из batch. Явный список unsets закрывает эту дыру в декларативности.
+    # Отсутствующий путь — нормальное идемпотентное состояние.
+    if [[ -f "${REPO_DIR}/config/openclaw.unset.txt" ]]; then
+        while IFS= read -r raw_path || [[ -n "$raw_path" ]]; do
+            config_path="${raw_path%%#*}"
+            config_path="${config_path#"${config_path%%[![:space:]]*}"}"
+            config_path="${config_path%"${config_path##*[![:space:]]}"}"
+            [[ -n "$config_path" ]] || continue
+
+            if CONFIG_OUTPUT="$(
+                "${COMPOSE[@]}" run --rm -T cli config unset "$config_path" 2>&1
+            )"; then
+                printf '%s\n' "$CONFIG_OUTPUT"
+            elif grep -qi 'Config path not found' <<< "$CONFIG_OUTPUT"; then
+                log "ключ уже отсутствует: ${config_path}"
+            else
+                printf '%s\n' "$CONFIG_OUTPUT" >&2
+                die "не удалось удалить ключ конфига ${config_path}"
+            fi
+        done < "${REPO_DIR}/config/openclaw.unset.txt"
+    fi
+
+    if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
+        if CONFIG_OUTPUT="$(
+            "${COMPOSE[@]}" run --rm -T cli config set \
+                --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" 2>&1
+        )"; then
+            printf '%s\n' "$CONFIG_OUTPUT"
+        else
+            printf '%s\n' "$CONFIG_OUTPUT" >&2
+            die "не удалось применить декларативный конфиг OpenClaw"
+        fi
     fi
 
     FINGERPRINT_AFTER="$(config_fingerprint)"
@@ -229,6 +255,28 @@ if [[ "$healthy" -ne 1 ]]; then
     # Автооткат намеренно не делаем: на стейтфул-сервисе с миграциями
     # он способен сделать хуже, чем сломанный деплой. Будим человека.
     die "гейтвей не поднялся за $((HEALTH_RETRIES * HEALTH_DELAY))с на ${TARGET_SHA:0:8}"
+fi
+
+# Проверяем не только строку provider, но и фактическую регистрацию
+# bundled-плагина. Это часть health gate на каждом reconcile: поиск — ключевая
+# функция, а обычные /healthz и /readyz наличие web_search не проверяют.
+if jq -e '
+       any(.[];
+         .path == "tools.web.search.provider"
+         and .value == "duckduckgo"
+       )
+     ' "${REPO_DIR}/config/openclaw.batch.json" > /dev/null; then
+    log "проверяем регистрацию DuckDuckGo"
+    if DDG_INSPECT="$(
+        "${COMPOSE[@]}" run --rm -T cli plugins inspect duckduckgo 2>&1
+    )"; then
+        printf '%s\n' "$DDG_INSPECT"
+    else
+        printf '%s\n' "$DDG_INSPECT" >&2
+        die "не удалось проверить плагин DuckDuckGo"
+    fi
+    grep -q 'Status:[[:space:]]*loaded' <<< "$DDG_INSPECT" \
+        || die "DuckDuckGo выбран, но его плагин не загружен"
 fi
 
 # --- Успех --------------------------------------------------------------
