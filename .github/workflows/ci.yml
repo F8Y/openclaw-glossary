@@ -250,7 +250,7 @@ jobs:
           ' "$PLUGIN/openclaw.plugin.json"
           for f in "$PLUGIN"/*.js; do node --check "$f"; done
           node --test "$PLUGIN"/*.test.js
-          grep -Fq 'TAVILY_PROXY_URL' "$PLUGIN/tavily-client.js"
+          grep -Fq 'TAVILY_PROXY_URL' "$PLUGIN/proxy.js"
           grep -Fq 'ProxyAgent' "$PLUGIN/tavily-client.js"
           grep -Fq 'dispatcher:' "$PLUGIN/tavily-client.js"
           test -x deploy/check-tavily.sh
