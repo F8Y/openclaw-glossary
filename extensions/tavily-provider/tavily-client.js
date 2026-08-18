@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+
 import { readProviderJsonResponse } from "openclaw/plugin-sdk/provider-http";
 import {
   DEFAULT_CACHE_TTL_MINUTES,
@@ -9,10 +11,14 @@ import {
 } from "openclaw/plugin-sdk/provider-web-search";
 import { wrapWebContent } from "openclaw/plugin-sdk/security-runtime";
 
+import { resolveTavilyProxyUrl } from "./proxy.js";
 import { normalizeTavilyResults } from "./result.js";
 
 const DEFAULT_BASE_URL = "https://api.tavily.com";
+const SEARCH_TIMEOUT_MS = 30_000;
 const SEARCH_CACHE = new Map();
+const PROXY_AGENTS = new Map();
+let undiciClient;
 
 function pluginSearchConfig(config) {
   const value = config?.plugins?.entries?.tavily?.config?.webSearch;
@@ -42,6 +48,53 @@ function searchEndpoint(config) {
   }
 }
 
+function loadUndici() {
+  if (!undiciClient) {
+    // Плагин смонтирован вне /app и не имеет собственного node_modules.
+    // Берём undici из зафиксированного образа OpenClaw.
+    const requireFromOpenClaw = createRequire(import.meta.resolve("openclaw"));
+    undiciClient = requireFromOpenClaw("undici");
+  }
+  return undiciClient;
+}
+
+function proxyAgent(proxyUrl) {
+  const cached = PROXY_AGENTS.get(proxyUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const { ProxyAgent } = loadUndici();
+  const dispatcher = new ProxyAgent(proxyUrl);
+  PROXY_AGENTS.set(proxyUrl, dispatcher);
+  return dispatcher;
+}
+
+async function postTavilyViaProxy({ url, key, body, proxyUrl }) {
+  const { fetch } = loadUndici();
+  let response;
+
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        "X-Client-Source": "openclaw",
+      },
+      body: JSON.stringify(body),
+      dispatcher: proxyAgent(proxyUrl),
+      redirect: "error",
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+  } catch {
+    // Не прикладываем low-level error: URL прокси может содержать пароль.
+    throw new Error("Tavily Search failed through the configured proxy.");
+  }
+
+  return readProviderJsonResponse(response, "Tavily Search");
+}
+
 export async function runTavilySearch({ config, query, maxResults }) {
   const key = apiKey(config);
   if (!key) {
@@ -56,8 +109,15 @@ export async function runTavilySearch({ config, query, maxResults }) {
   const count = Number.isFinite(maxResults)
     ? Math.max(1, Math.min(20, Math.floor(maxResults)))
     : 5;
+  const proxyUrl = resolveTavilyProxyUrl(config);
   const cacheKey = normalizeCacheKey(
-    JSON.stringify({ provider: "tavily", query, count, baseUrl: baseUrl(config) }),
+    JSON.stringify({
+      provider: "tavily",
+      query,
+      count,
+      baseUrl: baseUrl(config),
+      transport: proxyUrl ? "proxy" : "direct",
+    }),
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
   if (cached) {
@@ -65,17 +125,26 @@ export async function runTavilySearch({ config, query, maxResults }) {
   }
 
   const startedAt = Date.now();
-  const payload = await postTrustedWebToolsJson(
-    {
-      url: searchEndpoint(config),
-      timeoutSeconds: 30,
-      apiKey: key,
-      body: { query, max_results: count },
-      errorLabel: "Tavily Search",
-      extraHeaders: { "X-Client-Source": "openclaw" },
-    },
-    (response) => readProviderJsonResponse(response, "Tavily Search"),
-  );
+  const body = { query, max_results: count };
+  const endpoint = searchEndpoint(config);
+  const payload = proxyUrl
+    ? await postTavilyViaProxy({
+        url: endpoint,
+        key,
+        body,
+        proxyUrl,
+      })
+    : await postTrustedWebToolsJson(
+        {
+          url: endpoint,
+          timeoutSeconds: SEARCH_TIMEOUT_MS / 1000,
+          apiKey: key,
+          body,
+          errorLabel: "Tavily Search",
+          extraHeaders: { "X-Client-Source": "openclaw" },
+        },
+        (response) => readProviderJsonResponse(response, "Tavily Search"),
+      );
 
   const results = normalizeTavilyResults(payload.results, (value) =>
     wrapWebContent(value, "web_search"),

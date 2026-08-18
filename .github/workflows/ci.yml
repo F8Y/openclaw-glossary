@@ -40,6 +40,10 @@ jobs:
               fail=1
             fi
           done
+          if ! grep -q '^TAVILY_PROXY_URL: ENC\[AES256_GCM' secrets/openclaw.enc.yaml; then
+            echo "::error file=secrets/openclaw.enc.yaml::TAVILY_PROXY_URL отсутствует или не зашифрован"
+            fail=1
+          fi
           exit $fail
 
       - name: .env не в индексе
@@ -241,13 +245,22 @@ jobs:
             .id == "tavily"
             and (.contracts.webSearchProviders | index("tavily") != null)
             and (.setup.providers[0].envVars | index("TAVILY_API_KEY") != null)
+            and .uiHints["webSearch.proxyUrl"].sensitive == true
+            and .configSchema.properties.webSearch.properties.proxyUrl.type == "string"
           ' "$PLUGIN/openclaw.plugin.json"
           for f in "$PLUGIN"/*.js; do node --check "$f"; done
           node --test "$PLUGIN"/*.test.js
+          grep -Fq 'TAVILY_PROXY_URL' "$PLUGIN/tavily-client.js"
+          grep -Fq 'ProxyAgent' "$PLUGIN/tavily-client.js"
+          grep -Fq 'dispatcher:' "$PLUGIN/tavily-client.js"
+          test -x deploy/check-tavily.sh
+          grep -Fq 'plugins inspect tavily' deploy/check-tavily.sh
+          grep -Fq 'ProxyAgent' deploy/check-tavily.sh
+          grep -Fq 'plugins inspect tavily' deploy/reconcile.sh
+          grep -Fq 'TAVILY_PROXY_URL' deploy/reconcile.sh
 
-          # Tavily остаётся в репозитории как готовый провайдер, но
-          # недостижим с российского IP: AWS ELB отдаёт 403 до самого API.
-          # В рантайме активен только явно выбранный DuckDuckGo.
+          # Tavily — активный provider через собственный прокси.
+          # DuckDuckGo остаётся включён как ручной rollback.
           jq -e '
             any(.[];
               .path == "plugins.entries.duckduckgo.enabled"
@@ -260,7 +273,7 @@ jobs:
             )
             and any(.[];
               .path == "plugins.entries.tavily.enabled"
-              and .value == false
+              and .value == true
             )
             and any(.[];
               .path == "plugins.load.paths"
@@ -272,7 +285,7 @@ jobs:
             )
             and any(.[];
               .path == "tools.web.search.provider"
-              and .value == "duckduckgo"
+              and .value == "tavily"
             )
             and any(.[];
               .path == "tools.web.search.cacheTtlMinutes"
@@ -336,6 +349,11 @@ jobs:
 
           grep -Eq '^[[:space:]]*tools\.alsoAllow[[:space:]]*$' \
             config/openclaw.unset.txt
+          grep -Fq 'TAVILY_PROXY_URL:' docker-compose.yml
+          if grep -Eq '^[[:space:]]*OPENCLAW_PROXY_URL:' docker-compose.yml; then
+            echo "::error::прокси Tavily нельзя расширять на весь gateway"
+            exit 1
+          fi
 
       - name: Реестр внешних источников подключён
         run: |
@@ -434,6 +452,7 @@ jobs:
           OPENAI_API_KEY=ci
           OPENAI_BASE_URL=https://example.invalid/v1
           TAVILY_API_KEY=ci
+          TAVILY_PROXY_URL=http://proxy.invalid:8080
           TELEGRAM_BOT_TOKEN=ci
           EOF
           docker compose --env-file /tmp/ci.env -f docker-compose.yml config -q
@@ -442,6 +461,10 @@ jobs:
           jq -e '
             .services.gateway.environment.TELEGRAM_BOT_TOKEN == "ci"
             and .services.cli.environment.TELEGRAM_BOT_TOKEN == "ci"
+            and .services.gateway.environment.TAVILY_PROXY_URL == "http://proxy.invalid:8080"
+            and .services.cli.environment.TAVILY_PROXY_URL == "http://proxy.invalid:8080"
+            and (.services.gateway.environment | has("OPENCLAW_PROXY_URL") | not)
+            and (.services.cli.environment | has("OPENCLAW_PROXY_URL") | not)
           ' /tmp/compose.json
           echo "compose OK"
 

@@ -93,7 +93,7 @@ config/workspace/              AGENTS.md · SOUL.md · IDENTITY.md — 6764 из
 config/workspace/skills/       about · term · digest · sources · knowledge · analyze
 config/knowledge/              ai-glossary · finance-glossary · models · sources
 extensions/glossary-ui/        детерминированный Telegram-интерфейс, минуя модель
-extensions/tavily-provider/    резервный провайдер, сохранён, но выключен
+extensions/tavily-provider/    активный web_search через отдельный прокси
 deploy/                        reconcile.sh + systemd-юниты
 ```
 
@@ -102,10 +102,12 @@ deploy/                        reconcile.sh + systemd-юниты
 
 ## Поиск
 
-`tools.web.search.provider = duckduckgo`. Bundled-плагин включён явно;
-reconcile проверяет его регистрацию, а `deploy/check-duckduckgo.sh` вручную
-проверяет HTML-выдачу из сети gateway. HTML-поиск иногда отдаёт капчу — это
-ограничение IP со стороны DuckDuckGo, а не ошибка модели или маршрутизации.
+`tools.web.search.provider = tavily`. Локальный provider отправляет только
+запросы Tavily через `TAVILY_PROXY_URL`; Telegram, Cloud.ru и остальные
+соединения gateway идут напрямую. Прокси не назначается глобальным dispatcher.
+Reconcile проверяет регистрацию provider и наличие обеих переменных окружения,
+но не тратит Tavily-квоту каждые пять минут. Полный сетевой тест запускается
+вручную через `deploy/check-tavily.sh`.
 Оба скилла, зависящих от поиска, имеют ветку отказа и не рассказывают
 пользователю про провайдеры.
 
@@ -119,9 +121,9 @@ health gate: проверяет загрузку плагина и `channels sta
 `reply_dispatch` не попал в `typedHooks`. Без этой проверки интерфейс может
 быть полностью мёртв при зелёном health gate — так уже было.
 
-`tavily-provider` написан, но выключен: AWS ELB отвечает `403` на запросы с
-российского IP — блокировка до API, ключ ни при чём. Исходник сохранён для
-возможного возврата, но активным владельцем `web_search` остаётся DuckDuckGo.
+DuckDuckGo остаётся включён и настроен как ручной rollback. Автоматического
+переключения нет: оно маскировало бы деградацию Tavily и снова могло привести
+к капче на HTML-поиске.
 
 ## Интерфейс
 
@@ -186,7 +188,8 @@ yamllint, валидность JSON и systemd-юнитов, `docker compose con
   не включается: рантайм ретраит ту же модель с задержками 10 и 20 секунд.
   Под ударом ровно `/digest` и `/analyze` — единственные команды, которые
   теперь доходят до модели
-- доступность HTML-поиска DuckDuckGo нужно проверить на VM после выкладки
+- после каждой замены или продления прокси нужно запускать
+  `deploy/check-tavily.sh` на VM
 - покрытие квоты Cloud.ru не подтверждено — карта личная, потолка нет
 - Telegram-идентификатор председателя не добавлен в оба списка доступа,
   а `dmPolicy: allowlist` означает, что без этого он не сможет даже написать
@@ -211,7 +214,7 @@ yamllint, валидность JSON и systemd-юнитов, `docker compose con
 
 **Зелёный health gate должен означать работающий продукт, а не живой
 процесс.** `/healthz` и `/readyz` не знают ни про Telegram, ни про плагины.
-Отсюда отдельные проверки канала, DuckDuckGo и typed-хука `glossary-ui`.
+Отсюда отдельные проверки канала, Tavily и typed-хука `glossary-ui`.
 
 **Рестарт гейтвея — только при реальном изменении конфига.** `config set`
 переписывает `meta.lastTouchedAt` каждый раз, и ориентация на текст вывода

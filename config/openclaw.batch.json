@@ -134,7 +134,7 @@
   },
   {
     "path": "plugins.entries.tavily.enabled",
-    "value": false
+    "value": true
   },
   {
     "path": "tools.profile",
@@ -178,7 +178,7 @@
   },
   {
     "path": "tools.web.search.provider",
-    "value": "duckduckgo"
+    "value": "tavily"
   },
   {
     "path": "tools.web.search.maxResults",

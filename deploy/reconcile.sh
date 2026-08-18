@@ -319,27 +319,68 @@ else
     die "Telegram-плагин или канал не прошёл live probe"
 fi
 
-# Проверяем не только строку provider, но и фактическую регистрацию
-# bundled-плагина. Это часть health gate на каждом reconcile: поиск — ключевая
-# функция, а обычные /healthz и /readyz наличие web_search не проверяют.
-if jq -e '
-       any(.[];
-         .path == "tools.web.search.provider"
-         and .value == "duckduckgo"
-       )
-     ' "${REPO_DIR}/config/openclaw.batch.json" > /dev/null; then
-    log "проверяем регистрацию DuckDuckGo"
-    if DDG_INSPECT="$(
-        "${COMPOSE[@]}" run --rm -T cli plugins inspect duckduckgo 2>&1
-    )"; then
-        printf '%s\n' "$DDG_INSPECT"
-    else
-        printf '%s\n' "$DDG_INSPECT" >&2
-        die "не удалось проверить плагин DuckDuckGo"
-    fi
-    grep -q 'Status:[[:space:]]*loaded' <<< "$DDG_INSPECT" \
-        || die "DuckDuckGo выбран, но его плагин не загружен"
-fi
+# Проверяем регистрацию provider без настоящего поискового запроса:
+# reconcile выполняется каждые пять минут и не должен расходовать квоту.
+SEARCH_PROVIDER="$(
+    jq -er '
+      [.[] | select(.path == "tools.web.search.provider") | .value]
+      | if length == 1 and (.[0] | type) == "string"
+        then .[0]
+        else error("tools.web.search.provider must be declared exactly once")
+        end
+    ' "${REPO_DIR}/config/openclaw.batch.json"
+)" || die "не удалось определить выбранный web-search provider"
+
+case "$SEARCH_PROVIDER" in
+    tavily)
+        log "проверяем регистрацию Tavily"
+        if SEARCH_INSPECT="$(
+            "${COMPOSE[@]}" run --rm -T cli plugins inspect tavily 2>&1
+        )"; then
+            printf '%s\n' "$SEARCH_INSPECT"
+        else
+            printf '%s\n' "$SEARCH_INSPECT" >&2
+            die "не удалось проверить плагин Tavily"
+        fi
+
+        grep -q 'Status:[[:space:]]*loaded' <<< "$SEARCH_INSPECT" \
+            || die "Tavily выбран, но его плагин не загружен"
+        grep -Eq 'web-search:[[:space:]]*tavily' <<< "$SEARCH_INSPECT" \
+            || die "Tavily не зарегистрировал capability web-search"
+
+        # Переменные раскрываются внутри CLI-контейнера.
+        # shellcheck disable=SC2016
+        if ! "${COMPOSE[@]}" run --rm -T \
+            --entrypoint /bin/sh cli -lc '
+              test -n "${TAVILY_API_KEY:-}" || {
+                echo "TAVILY_API_KEY не задан" >&2
+                exit 1
+              }
+              test -n "${TAVILY_PROXY_URL:-}" || {
+                echo "TAVILY_PROXY_URL не задан" >&2
+                exit 1
+              }
+            '; then
+            die "Tavily не получил ключ или proxy URL"
+        fi
+        ;;
+    duckduckgo)
+        log "проверяем регистрацию DuckDuckGo"
+        if SEARCH_INSPECT="$(
+            "${COMPOSE[@]}" run --rm -T cli plugins inspect duckduckgo 2>&1
+        )"; then
+            printf '%s\n' "$SEARCH_INSPECT"
+        else
+            printf '%s\n' "$SEARCH_INSPECT" >&2
+            die "не удалось проверить плагин DuckDuckGo"
+        fi
+        grep -q 'Status:[[:space:]]*loaded' <<< "$SEARCH_INSPECT" \
+            || die "DuckDuckGo выбран, но его плагин не загружен"
+        ;;
+    *)
+        die "неподдерживаемый web-search provider: ${SEARCH_PROVIDER}"
+        ;;
+esac
 
 # --- Успех --------------------------------------------------------------
 echo "$TARGET_SHA" > "${STATE_DIR}/last-successful-sha"
