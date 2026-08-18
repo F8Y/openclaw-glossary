@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/opt/openclaw-glossary}"
 ENV_FILE="${ENV_FILE:-/run/openclaw/env}"
-MODEL="google/gemini-3.1-flash-lite"
+MODEL="Qwen/Qwen3-Coder-Next"
 PRIMARY="cloudru/${MODEL}"
 
 COMPOSE=(
@@ -24,10 +24,10 @@ if [[ "$configured_primary" != "$PRIMARY" ]]; then
 fi
 
 "${COMPOSE[@]}" exec -T gateway \
-    env GEMINI_SMOKE_MODEL="$MODEL" node --input-type=module <<'NODE'
-const model = String(process.env.GEMINI_SMOKE_MODEL ?? "").trim();
+    env PRIMARY_SMOKE_MODEL="$MODEL" node --input-type=module <<'NODE'
+const model = String(process.env.PRIMARY_SMOKE_MODEL ?? "").trim();
 const apiKey = String(process.env.CLOUDRU_API_KEY ?? "").trim();
-const expected = "GEMINI_SMOKE_OK";
+const expected = "PRIMARY_SMOKE_OK";
 
 if (!apiKey) {
   console.error("ОШИБКА: CLOUDRU_API_KEY не задан внутри gateway");
@@ -52,8 +52,7 @@ try {
             content: `Ответь только строкой ${expected}`,
           },
         ],
-        max_tokens: 32,
-        temperature: 0,
+        max_completion_tokens: 32,
         stream: false,
       }),
       signal: AbortSignal.timeout(30_000),
@@ -64,14 +63,35 @@ try {
   process.exit(1);
 }
 
+let raw;
+try {
+  raw = await response.text();
+} catch {
+  console.error("ОШИБКА: не удалось прочитать ответ Cloud.ru");
+  process.exit(1);
+}
+
 if (!response.ok) {
-  console.error(`ОШИБКА: Cloud.ru HTTP ${response.status}`);
+  let detail = "";
+  try {
+    const errorPayload = JSON.parse(raw);
+    detail =
+      errorPayload?.error?.message ??
+      errorPayload?.message ??
+      errorPayload?.detail ??
+      "";
+  } catch {
+    // Ответ может быть не JSON.
+  }
+
+  const suffix = detail ? `: ${String(detail).slice(0, 500)}` : "";
+  console.error(`ОШИБКА: Cloud.ru HTTP ${response.status}${suffix}`);
   process.exit(1);
 }
 
 let payload;
 try {
-  payload = await response.json();
+  payload = JSON.parse(raw);
 } catch {
   console.error("ОШИБКА: Cloud.ru вернул невалидный JSON");
   process.exit(1);
@@ -79,7 +99,7 @@ try {
 
 const content = payload?.choices?.[0]?.message?.content;
 if (typeof content !== "string" || !content.includes(expected)) {
-  console.error("ОШИБКА: Gemini ответил, но не прошёл контрольную фразу");
+  console.error("ОШИБКА: primary-модель не прошла контрольную фразу");
   process.exit(1);
 }
 

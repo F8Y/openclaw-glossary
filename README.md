@@ -75,21 +75,21 @@ EOF
 
 | Команда | Результат |
 |---|---|
-| `/model gemini` | эта Telegram-сессия использует Gemini 3.1 Flash Lite через Cloud.ru |
+| `/model qwen` | эта Telegram-сессия использует Qwen3-Coder-Next через Cloud.ru |
 | `/model cloudru` | эта Telegram-сессия использует резервный DeepSeek V4 Flash через Cloud.ru |
 | `/model bothub` | эта Telegram-сессия использует DeepSeek V4 Flash через BotHub |
 | `/model status` | показать активную модель и endpoint |
-| `/model default` | убрать ручной выбор и вернуться к Gemini из GitOps-конфига |
+| `/model default` | убрать ручной выбор и вернуться к Qwen из GitOps-конфига |
 
 Переключение относится только к текущей Telegram-сессии и не меняет GitOps-
 конфиг для остальных пользователей. Если модель выбрана через `/model`, режим
 строгий: при ошибке выбранного провайдера OpenClaw покажет ошибку, а не уйдёт
 в fallback. Это удобно для честного сравнения моделей.
 
-После деплоя выполните один live smoke-test Gemini:
+После деплоя выполните один live smoke-test primary-модели:
 
 ```bash
-sudo bash /opt/openclaw-glossary/deploy/check-gemini.sh
+sudo bash /opt/openclaw-glossary/deploy/check-primary-model.sh
 ```
 
 Затем отправьте `/model default` в старых Telegram-сессиях, где сохранился
