@@ -18,7 +18,11 @@ const DEFAULT_BASE_URL = "https://api.tavily.com";
 const SEARCH_TIMEOUT_MS = 30_000;
 const SEARCH_CACHE = new Map();
 const PROXY_AGENTS = new Map();
-let undiciClient;
+
+// Контейнер OpenClaw хранит host-зависимости в /app/node_modules.
+// Загружаем undici относительно package.json самого приложения.
+const requireFromOpenClaw = createRequire("/app/package.json");
+const { ProxyAgent, fetch: undiciFetch } = requireFromOpenClaw("undici");
 
 function pluginSearchConfig(config) {
   const value = config?.plugins?.entries?.tavily?.config?.webSearch;
@@ -48,34 +52,22 @@ function searchEndpoint(config) {
   }
 }
 
-function loadUndici() {
-  if (!undiciClient) {
-    // Плагин смонтирован вне /app и не имеет собственного node_modules.
-    // Берём undici из зафиксированного образа OpenClaw.
-    const requireFromOpenClaw = createRequire(import.meta.resolve("openclaw"));
-    undiciClient = requireFromOpenClaw("undici");
-  }
-  return undiciClient;
-}
-
 function proxyAgent(proxyUrl) {
   const cached = PROXY_AGENTS.get(proxyUrl);
   if (cached) {
     return cached;
   }
 
-  const { ProxyAgent } = loadUndici();
   const dispatcher = new ProxyAgent(proxyUrl);
   PROXY_AGENTS.set(proxyUrl, dispatcher);
   return dispatcher;
 }
 
 async function postTavilyViaProxy({ url, key, body, proxyUrl }) {
-  const { fetch } = loadUndici();
   let response;
 
   try {
-    response = await fetch(url, {
+    response = await undiciFetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,

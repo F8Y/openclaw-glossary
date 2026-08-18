@@ -253,6 +253,11 @@ jobs:
           grep -Fq 'TAVILY_PROXY_URL' "$PLUGIN/proxy.js"
           grep -Fq 'ProxyAgent' "$PLUGIN/tavily-client.js"
           grep -Fq 'dispatcher:' "$PLUGIN/tavily-client.js"
+          grep -Fq 'createRequire("/app/package.json")' "$PLUGIN/tavily-client.js"
+          if grep -Fq 'import.meta.resolve("openclaw")' "$PLUGIN/tavily-client.js"; then
+            echo "::error::локальный плагин не может резолвить openclaw относительно своего каталога"
+            exit 1
+          fi
           test -x deploy/check-tavily.sh
           grep -Fq 'plugins inspect tavily' deploy/check-tavily.sh
           grep -Fq 'ProxyAgent' deploy/check-tavily.sh
