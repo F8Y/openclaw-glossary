@@ -157,6 +157,7 @@ jobs:
 
           test -x deploy/check-primary-model.sh
           grep -Fq 'Qwen/Qwen3-Coder-Next' deploy/check-primary-model.sh
+          grep -Fq 'config set --replace' deploy/reconcile.sh
 
       - name: Telegram UI plugin
         run: |

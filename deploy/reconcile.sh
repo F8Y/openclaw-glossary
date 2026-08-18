@@ -255,8 +255,11 @@ if [[ -f "${REPO_DIR}/config/openclaw.batch.json" \
     fi
 
     if [[ -f "${REPO_DIR}/config/openclaw.batch.json" ]]; then
+        # Git хранит полное желаемое состояние. Разрешаем намеренно удалять
+        # устаревшие элементы массивов, например предыдущую модель Cloud.ru.
+        # Без --replace OpenClaw останавливает такую смену защитной проверкой.
         if CONFIG_OUTPUT="$(
-            "${COMPOSE[@]}" run --rm -T cli config set \
+            "${COMPOSE[@]}" run --rm -T cli config set --replace \
                 --batch-json "$(cat "${REPO_DIR}/config/openclaw.batch.json")" 2>&1
         )"; then
             printf '%s\n' "$CONFIG_OUTPUT"
