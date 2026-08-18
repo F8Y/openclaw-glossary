@@ -315,6 +315,10 @@
     "value": true
   },
   {
+    "path": "messages.queue.byChannel.telegram",
+    "value": "followup"
+  },
+  {
     "path": "models.providers.custom-bothub-chat.timeoutSeconds",
     "value": 90
   },
