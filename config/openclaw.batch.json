@@ -182,7 +182,7 @@
   },
   {
     "path": "tools.web.search.maxResults",
-    "value": 5
+    "value": 8
   },
   {
     "path": "tools.web.search.cacheTtlMinutes",

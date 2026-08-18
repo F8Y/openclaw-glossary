@@ -13,6 +13,7 @@ import { wrapWebContent } from "openclaw/plugin-sdk/security-runtime";
 
 import { resolveTavilyProxyUrl } from "./proxy.js";
 import { normalizeTavilyResults } from "./result.js";
+import { buildTavilySearchRequest } from "./search-options.js";
 
 const DEFAULT_BASE_URL = "https://api.tavily.com";
 const SEARCH_TIMEOUT_MS = 30_000;
@@ -87,7 +88,15 @@ async function postTavilyViaProxy({ url, key, body, proxyUrl }) {
   return readProviderJsonResponse(response, "Tavily Search");
 }
 
-export async function runTavilySearch({ config, query, maxResults }) {
+export async function runTavilySearch({
+  config,
+  query,
+  maxResults,
+  topic,
+  searchDepth,
+  startDate,
+  endDate,
+}) {
   const key = apiKey(config);
   if (!key) {
     throw new Error(
@@ -98,15 +107,19 @@ export async function runTavilySearch({ config, query, maxResults }) {
     throw new Error("web_search (tavily) needs a non-empty query.");
   }
 
-  const count = Number.isFinite(maxResults)
-    ? Math.max(1, Math.min(20, Math.floor(maxResults)))
-    : 5;
+  const body = buildTavilySearchRequest({
+    query,
+    maxResults,
+    topic,
+    searchDepth,
+    startDate,
+    endDate,
+  });
   const proxyUrl = resolveTavilyProxyUrl(config);
   const cacheKey = normalizeCacheKey(
     JSON.stringify({
       provider: "tavily",
-      query,
-      count,
+      request: body,
       baseUrl: baseUrl(config),
       transport: proxyUrl ? "proxy" : "direct",
     }),
@@ -117,7 +130,6 @@ export async function runTavilySearch({ config, query, maxResults }) {
   }
 
   const startedAt = Date.now();
-  const body = { query, max_results: count };
   const endpoint = searchEndpoint(config);
   const payload = proxyUrl
     ? await postTavilyViaProxy({

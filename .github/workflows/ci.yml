@@ -262,11 +262,15 @@ jobs:
             and .configSchema.properties.webSearch.properties.proxyUrl.type == "string"
           ' "$PLUGIN/openclaw.plugin.json"
           for f in "$PLUGIN"/*.js; do node --check "$f"; done
+          test -s "$PLUGIN/search-options.js"
           node --test "$PLUGIN"/*.test.js
           grep -Fq 'TAVILY_PROXY_URL' "$PLUGIN/proxy.js"
           grep -Fq 'ProxyAgent' "$PLUGIN/tavily-client.js"
           grep -Fq 'dispatcher:' "$PLUGIN/tavily-client.js"
           grep -Fq 'createRequire("/app/package.json")' "$PLUGIN/tavily-client.js"
+          grep -Fq 'start_date' "$PLUGIN/search-options.js"
+          grep -Fq 'end_date' "$PLUGIN/search-options.js"
+          grep -Fq 'search_depth' "$PLUGIN/search-options.js"
           if grep -Fq 'import.meta.resolve("openclaw")' "$PLUGIN/tavily-client.js"; then
             echo "::error::локальный плагин не может резолвить openclaw относительно своего каталога"
             exit 1
@@ -304,6 +308,10 @@ jobs:
             and any(.[];
               .path == "tools.web.search.provider"
               and .value == "tavily"
+            )
+            and any(.[];
+              .path == "tools.web.search.maxResults"
+              and .value == 8
             )
             and any(.[];
               .path == "tools.web.search.cacheTtlMinutes"

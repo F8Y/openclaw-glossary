@@ -2,7 +2,7 @@
   "id": "tavily",
   "name": "Tavily Search Provider",
   "description": "Pinned Tavily web_search provider for Glossaryck",
-  "version": "2026.7.1-3",
+  "version": "2026.7.1-4",
   "activation": {
     "onStartup": true
   },
