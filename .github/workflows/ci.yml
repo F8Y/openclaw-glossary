@@ -123,6 +123,12 @@ jobs:
             and any(.[];
               .path == "models.providers.cloudru.models"
               and any(.value[];
+                .id == "google/gemini-3.1-flash-lite"
+                and .reasoning == false
+                and .contextWindow == 1048576
+                and .compat.supportsTools == true
+              )
+              and any(.value[];
                 .id == "deepseek-ai/DeepSeek-V4-Flash"
                 and .compat.supportsTools == true
               )
@@ -132,18 +138,25 @@ jobs:
             )
             and any(.[];
               .path == "agents.defaults.model.primary"
-              and .value == "cloudru/deepseek-ai/DeepSeek-V4-Flash"
+              and .value == "cloudru/google/gemini-3.1-flash-lite"
             )
             and any(.[];
               .path == "agents.defaults.model.fallbacks"
-              and (.value | index("custom-bothub-chat/deepseek-v4-flash") != null)
+              and .value == [
+                "cloudru/deepseek-ai/DeepSeek-V4-Flash",
+                "custom-bothub-chat/deepseek-v4-flash"
+              ]
             )
             and any(.[];
               .path == "agents.defaults.models"
               and .value["custom-bothub-chat/deepseek-v4-flash"].alias == "bothub"
               and .value["cloudru/deepseek-ai/DeepSeek-V4-Flash"].alias == "cloudru"
+              and .value["cloudru/google/gemini-3.1-flash-lite"].alias == "gemini"
             )
           ' config/openclaw.batch.json
+
+          test -x deploy/check-gemini.sh
+          grep -Fq 'google/gemini-3.1-flash-lite' deploy/check-gemini.sh
 
       - name: Telegram UI plugin
         run: |

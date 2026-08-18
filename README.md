@@ -75,20 +75,27 @@ EOF
 
 | Команда | Результат |
 |---|---|
-| `/model cloudru` | эта Telegram-сессия использует DeepSeek V4 Flash через Cloud.ru |
+| `/model gemini` | эта Telegram-сессия использует Gemini 3.1 Flash Lite через Cloud.ru |
+| `/model cloudru` | эта Telegram-сессия использует резервный DeepSeek V4 Flash через Cloud.ru |
 | `/model bothub` | эта Telegram-сессия использует DeepSeek V4 Flash через BotHub |
 | `/model status` | показать активную модель и endpoint |
-| `/model default` | убрать ручной выбор и вернуться к primary из конфига |
+| `/model default` | убрать ручной выбор и вернуться к Gemini из GitOps-конфига |
 
 Переключение относится только к текущей Telegram-сессии и не меняет GitOps-
 конфиг для остальных пользователей. Если модель выбрана через `/model`, режим
 строгий: при ошибке выбранного провайдера OpenClaw покажет ошибку, а не уйдёт
-в fallback. Это удобно для честного тестирования Cloud.ru.
+в fallback. Это удобно для честного сравнения моделей.
 
-Минимальная проверка: после `/model cloudru` запросить один термин, затем
-`/digest`, затем термин, которого нет в локальной базе. Оценивать время ответа,
-корректность вызовов `memory_search`/`web_search` и наличие ошибок в логах.
-Вернуться можно одной командой `/model bothub`.
+После деплоя выполните один live smoke-test Gemini:
+
+```bash
+sudo bash /opt/openclaw-glossary/deploy/check-gemini.sh
+```
+
+Затем отправьте `/model default` в старых Telegram-сессиях, где сохранился
+ручной выбор модели. Для содержательной проверки запросите один термин и
+`/digest`; при сбое primary автоматически используются Cloud.ru DeepSeek,
+затем BotHub.
 
 ## Бюджет инструкций
 
