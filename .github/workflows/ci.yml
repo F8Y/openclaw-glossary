@@ -82,6 +82,24 @@ jobs:
           # Любой отказ после определения TARGET_SHA должен попадать в alert.
           grep -Fq 'record_failed_state' "$SCRIPT"
 
+          # Краткий сетевой сбой не должен валить last-known-good production.
+          grep -Fq 'fetch_branch' "$SCRIPT"
+          grep -Fq 'select_last_known_good' "$SCRIPT"
+          grep -Fq 'GIT_FETCH_ALERT_AFTER' "$SCRIPT"
+          grep -Fq 'self-reexec: используем уже выбранный SHA' "$SCRIPT"
+
+          # Ожидаемая разница прав корня plugins не должна дёргать gateway.
+          # Права вложенных файлов всё ещё учитываются.
+          grep -Fq 'PLUGIN_DIFF_RAW' "$SCRIPT"
+          grep -Fq "sed '\\|^[.]d[.][.][.]p[.]* [.]/$|d'" "$SCRIPT"
+          ! grep -Fq -- '--no-perms' "$SCRIPT"
+
+          # Запиненный локальный образ не требует pull каждый цикл.
+          grep -Fq 'docker image inspect' "$SCRIPT"
+
+          # Git source degradation имеет отдельный, неаварийный текст алерта.
+          grep -Fq 'GitOps source временно недоступен' deploy/alert.sh
+
       - name: yamllint
         run: |
           pipx install yamllint

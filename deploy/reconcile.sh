@@ -19,8 +19,18 @@ LOCK_FILE="${RUN_DIR}/reconcile.lock"
 HEALTH_URL="http://127.0.0.1:18789"
 HEALTH_RETRIES=30
 HEALTH_DELAY=5
+GIT_FETCH_ATTEMPTS="${GIT_FETCH_ATTEMPTS:-3}"
+GIT_FETCH_TIMEOUT_SECONDS="${GIT_FETCH_TIMEOUT_SECONDS:-25}"
+GIT_FETCH_ALERT_AFTER="${GIT_FETCH_ALERT_AFTER:-3}"
+# Системный юнит работает без терминала. BatchMode запрещает запросы пароля,
+# IPv4 обходит наблюдавшиеся зависания маршрута до ssh.github.com по IPv6.
+GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -4 -o BatchMode=yes -o ConnectTimeout=10 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=2}"
+export GIT_SSH_COMMAND
 TARGET_SHA=""
 SELF_REEXECUTED="${OPENCLAW_RECONCILE_REEXECUTED:-0}"
+FAILURE_KIND="reconcile"
+GIT_SYNC_DEGRADED=0
+GIT_FETCH_FAILURE_COUNT=0
 
 log() { printf '%s [reconcile] %s\n' "$(date -Is)" "$*"; }
 
@@ -32,6 +42,7 @@ record_failed_state() {
 
     mkdir -p "$STATE_DIR" 2>/dev/null || return 0
     printf '%s\n' "$failed_sha" > "${STATE_DIR}/failed-sha" 2>/dev/null || true
+    printf '%s\n' "$FAILURE_KIND" > "${STATE_DIR}/failure-kind" 2>/dev/null || true
     date -Is > "${STATE_DIR}/failed-at" 2>/dev/null || true
 }
 
@@ -55,6 +66,76 @@ on_unexpected_error() {
 
 trap on_unexpected_error ERR
 
+for numeric_setting in \
+    GIT_FETCH_ATTEMPTS \
+    GIT_FETCH_TIMEOUT_SECONDS \
+    GIT_FETCH_ALERT_AFTER; do
+    numeric_value="${!numeric_setting}"
+    [[ "$numeric_value" =~ ^[1-9][0-9]*$ ]] \
+        || die "${numeric_setting} должен быть положительным целым числом"
+done
+
+fetch_branch() {
+    local attempt rc=1 previous_count=0
+
+    for ((attempt = 1; attempt <= GIT_FETCH_ATTEMPTS; attempt++)); do
+        if timeout --signal=TERM --kill-after=5s \
+            "${GIT_FETCH_TIMEOUT_SECONDS}s" \
+            git fetch --quiet origin "$BRANCH"; then
+            if [[ -f "${STATE_DIR}/git-fetch-failed-at" ]]; then
+                log "доступ к origin/${BRANCH} восстановлен"
+            fi
+            rm -f \
+                "${STATE_DIR}/git-fetch-failed-at" \
+                "${STATE_DIR}/git-fetch-failures" \
+                "${STATE_DIR}/git-fetch-alerted"
+            GIT_FETCH_FAILURE_COUNT=0
+            return 0
+        else
+            rc=$?
+        fi
+
+        log "git fetch не удался: попытка ${attempt}/${GIT_FETCH_ATTEMPTS}, код ${rc}"
+        if ((attempt < GIT_FETCH_ATTEMPTS)); then
+            sleep $((attempt * 3))
+        fi
+    done
+
+    if [[ -r "${STATE_DIR}/git-fetch-failures" ]]; then
+        previous_count="$(cat "${STATE_DIR}/git-fetch-failures")"
+        [[ "$previous_count" =~ ^[0-9]+$ ]] || previous_count=0
+    fi
+    GIT_FETCH_FAILURE_COUNT=$((previous_count + 1))
+    printf '%s\n' "$GIT_FETCH_FAILURE_COUNT" \
+        > "${STATE_DIR}/git-fetch-failures"
+    if [[ ! -e "${STATE_DIR}/git-fetch-failed-at" ]]; then
+        date -Is > "${STATE_DIR}/git-fetch-failed-at"
+    fi
+
+    return "$rc"
+}
+
+select_last_known_good() {
+    local last_good_file="${STATE_DIR}/last-successful-sha"
+    local last_good_sha
+
+    [[ -r "$last_good_file" ]] \
+        || die "origin недоступен и нет сохранённого last-known-good SHA"
+    last_good_sha="$(cat "$last_good_file")"
+    [[ "$last_good_sha" =~ ^[0-9a-fA-F]{40,64}$ ]] \
+        || die "last-known-good SHA имеет неверный формат"
+    git cat-file -e "${last_good_sha}^{commit}" 2>/dev/null \
+        || die "last-known-good commit отсутствует в локальном git-кэше"
+
+    # Не выполняем скрытый rollback. Если checkout уже отличается от
+    # последнего успешно применённого SHA, без Git нельзя доказать, какое
+    # состояние желаемое — такой случай должен остановить реконсиляцию.
+    [[ "$PREVIOUS_SHA" == "$last_good_sha" ]] \
+        || die "origin недоступен, а HEAD не совпадает с last-known-good SHA"
+
+    TARGET_SHA="$last_good_sha"
+}
+
 # --- Блокировка ------------------------------------------------------
 # Таймер может выстрелить, пока предыдущий прогон ещё тянет образ.
 mkdir -p "$RUN_DIR" "$STATE_DIR"
@@ -69,16 +150,28 @@ cd "$REPO_DIR"
 # --- Синхронизация с git ---------------------------------------------
 SELF_PATH="${REPO_DIR}/deploy/reconcile.sh"
 SELF_HASH_BEFORE="$(sha256sum "$SELF_PATH" | cut -d' ' -f1)"
-
-log "получаем origin/${BRANCH}"
-git fetch --quiet origin "$BRANCH"
-
 PREVIOUS_SHA="$(git rev-parse HEAD)"
-TARGET_SHA="$(git rev-parse "origin/${BRANCH}")"
+TARGET_SHA="$PREVIOUS_SHA"
+
+if [[ "$SELF_REEXECUTED" == "1" ]]; then
+    # Родительский процесс уже успешно получил origin, выбрал TARGET_SHA и
+    # сделал reset перед exec новой версии этого файла. Повторный fetch здесь
+    # не нужен и создавал лишнее окно для сетевого сбоя посреди одной выкатки.
+    log "self-reexec: используем уже выбранный SHA ${TARGET_SHA:0:8}"
+else
+    log "получаем origin/${BRANCH}"
+    if fetch_branch; then
+        TARGET_SHA="$(git rev-parse "origin/${BRANCH}")"
+    else
+        GIT_SYNC_DEGRADED=1
+        select_last_known_good
+        log "ВНИМАНИЕ: origin/${BRANCH} недоступен; применяем last-known-good ${TARGET_SHA:0:8} (сбойных циклов: ${GIT_FETCH_FAILURE_COUNT})"
+    fi
+fi
 
 # reset --hard, а не merge: локальные правки на сервере — это дрейф,
 # и он должен затираться, а не сохраняться.
-git reset --quiet --hard "origin/${BRANCH}"
+git reset --quiet --hard "$TARGET_SHA"
 git clean -qfd -e '.env' -e 'node_modules'
 
 if [[ "$PREVIOUS_SHA" != "$TARGET_SHA" ]]; then
@@ -188,8 +281,18 @@ PLUGIN_ROOT="${OPENCLAW_STATE_DIR}/config/extensions"
 # существующего root:root/0700 после прежних запусков с umask 077.
 install -d -o 1000 -g 1000 -m 0700 "$PLUGIN_ROOT"
 
-PLUGIN_DIFF="$(rsync -ain --no-owner --no-group --delete \
-    "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/")"
+# Корень исходников имеет режим 0755, а runtime-каталог намеренно 0700.
+# Игнорируем только эту ожидаемую строку itemize (`.d...p... ./`). Права
+# вложенных файлов по-прежнему входят в drift detection: глобальный
+# --no-perms скрыл бы полезные изменения executable/readable bits.
+if PLUGIN_DIFF_RAW="$(rsync -ain --no-owner --no-group --delete \
+    "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/")"; then
+    :
+else
+    die "не удалось сравнить локальные плагины"
+fi
+PLUGIN_DIFF="$(printf '%s\n' "$PLUGIN_DIFF_RAW" \
+    | sed '\|^[.]d[.][.][.]p[.]* [.]/$|d')"
 if [[ -n "$PLUGIN_DIFF" ]]; then
     PLUGIN_CHANGED=1
     log "локальные плагины изменились"
@@ -197,7 +300,8 @@ else
     log "локальные плагины без изменений"
 fi
 
-rsync -a --no-owner --no-group --delete "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/"
+rsync -a --no-owner --no-group --delete \
+    "${PLUGIN_SRC}/" "${PLUGIN_ROOT}/"
 chown -R 1000:1000 "$PLUGIN_ROOT"
 # rsync -a сохраняет режим исходного каталога, но родитель обязан
 # оставаться доступным только владельцу node и при этом проходимым для него.
@@ -206,7 +310,13 @@ chmod 0700 "$PLUGIN_ROOT"
 
 # --- Применение стека -------------------------------------------------
 log "docker compose up -d"
-"${COMPOSE[@]}" pull --quiet gateway || log "pull не удался, работаем на локальном образе"
+if [[ "$OPENCLAW_IMAGE" == *@sha256:* ]] \
+    && docker image inspect "$OPENCLAW_IMAGE" > /dev/null 2>&1; then
+    log "запиненный образ уже есть локально, pull пропускаем"
+else
+    "${COMPOSE[@]}" pull --quiet gateway \
+        || log "pull не удался, compose попробует использовать локальный образ"
+fi
 "${COMPOSE[@]}" up -d --remove-orphans
 
 # --- Декларативный конфиг агентов -------------------------------------
@@ -388,6 +498,24 @@ esac
 # --- Успех --------------------------------------------------------------
 echo "$TARGET_SHA" > "${STATE_DIR}/last-successful-sha"
 date -Is > "${STATE_DIR}/last-successful-at"
-rm -f "${STATE_DIR}/failed-sha" "${STATE_DIR}/failed-at"
+rm -f \
+    "${STATE_DIR}/failed-sha" \
+    "${STATE_DIR}/failed-at" \
+    "${STATE_DIR}/failure-kind"
 
-log "реконсиляция завершена на ${TARGET_SHA:0:8}"
+# Единичный сетевой сбой — деградация, а не поломка production. После
+# нескольких полностью проваленных fetch-циклов отправляем один отдельный
+# алерт. alert.sh создаст marker только после успешной отправки, поэтому
+# потерянное уведомление будет повторено на следующем цикле.
+if [[ "$GIT_SYNC_DEGRADED" -eq 1 \
+      && "$GIT_FETCH_FAILURE_COUNT" -ge "$GIT_FETCH_ALERT_AFTER" \
+      && ! -e "${STATE_DIR}/git-fetch-alerted" ]]; then
+    FAILURE_KIND="git-sync"
+    die "origin/${BRANCH} недоступен ${GIT_FETCH_FAILURE_COUNT} циклов подряд; production подтверждён на ${TARGET_SHA:0:8}"
+fi
+
+if [[ "$GIT_SYNC_DEGRADED" -eq 1 ]]; then
+    log "реконсиляция завершена на cached SHA ${TARGET_SHA:0:8}; Git source degraded"
+else
+    log "реконсиляция завершена на ${TARGET_SHA:0:8}"
+fi
