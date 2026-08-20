@@ -130,6 +130,26 @@ jobs:
           fi
           echo "дублей нет, путей: $(jq length config/openclaw.batch.json)"
 
+      - name: Telegram onboarding остаётся закрытым
+        run: |
+          set -euo pipefail
+
+          # pairing показывает неизвестному отправителю код и ID, но не
+          # передаёт его сообщение агенту. Явные списки сохраняют постоянный
+          # GitOps-доступ, а административным владельцем остаётся один человек.
+          jq -e '
+            ([.[] | select(.path == "channels.telegram.dmPolicy") | .value] | first) as $policy
+            | ([.[] | select(.path == "channels.telegram.allowFrom") | .value] | first) as $dm
+            | ([.[] | select(.path == "commands.allowFrom") | .value.telegram] | first) as $commands
+            | ([.[] | select(.path == "commands.ownerAllowFrom") | .value] | first) as $owners
+            | $policy == "pairing"
+              and ($dm | type == "array")
+              and ($commands | type == "array")
+              and (($dm | sort) == ($commands | sort))
+              and all($dm[]; test("^[0-9]+$"))
+              and ($owners == ["telegram:414005287"])
+          ' config/openclaw.batch.json
+
       - name: LLM-провайдеры и короткие алиасы
         run: |
           set -euo pipefail

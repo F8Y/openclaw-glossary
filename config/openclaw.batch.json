@@ -352,7 +352,7 @@
   },
   {
     "path": "channels.telegram.dmPolicy",
-    "value": "allowlist"
+    "value": "pairing"
   },
   {
     "path": "models.providers.cloudru.baseUrl",
